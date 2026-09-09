@@ -19,3 +19,6 @@ Get-Content -Raw -LiteralPath .\COMMON-AGENTS.md
 - 見つからなければOpenAIのCodex ページにログインし、公式資産をde-minify、またはリクエストをキャプチャするなどして解析する
 - Codex Desktop App自体の実装も参考に使えるかも知れない
 - ログイン、認証保持を自前実装する
+- ESP32側で認証を保持するようにする
+- 初期設定以降のPCまたはスマホの常時接続を不要にする
+- USBは給電のみにし、Wi-Fiで定期更新する仕組みにする
