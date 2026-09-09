@@ -38,3 +38,4 @@ Get-Content -Raw -LiteralPath .\COMMON-AGENTS.md
 - NVSの設定はversion 2のJSON blobで、version 1は反転なしとして自動移行する。認証もblobを使い、NVS文字列の4000バイト制限を避ける。LCDの基準はpanel offset_rotation=1、通常rotation=0、上下反転rotation=2。タッチを別途二重反転しない。
 - Windowsの検証APでは再起動後にWi-Fi関連付けだけ成功し、DHCPのSELECTINGが続く挙動を実測した。`src/dhcp-broadcast.cpp` でIP未取得時の応答をRFC 2131 §4.1のブロードキャストで要求すると再接続した。`--wrap=dhcp_append_extra_opts` はこの処理に必要。SDK更新時はフックの宣言と実機再接続を再検証し、固定IP・MAC変更で代替しない。
 - 描画は320×240の8-bit SpriteをWi-Fi開始前に確保し、完成フレームを一度だけLCDへ転送する。実LCDへ直接全消去→各部描画を繰り返すと操作のたびにちらつくため、描画先の変更時はこの経路を維持する。
+- Linux CIのChromeは親終了後も子プロセスが一時プロファイルへ書き込む場合がある。`scripts/test-setup-ui.py` は専用セッションで起動し、プロセスグループを終了してから期限付きで削除する。Windows専用GPU起動オプションをLinuxへ適用するとSIGTRAPで起動できなかったため、OS分岐を維持する。

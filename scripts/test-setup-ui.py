@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import shutil
@@ -249,9 +250,11 @@ def hidden_process_kwargs() -> dict[str, Any]:
 
 
 def terminate_process_tree(process: subprocess.Popen[bytes] | None) -> None:
-    if process is None or process.poll() is not None:
+    if process is None:
         return
     if os.name == "nt":
+        if process.poll() is not None:
+            return
         subprocess.run(
             ["taskkill", "/PID", str(process.pid), "/T", "/F"],
             stdout=subprocess.DEVNULL,
@@ -260,14 +263,35 @@ def terminate_process_tree(process: subprocess.Popen[bytes] | None) -> None:
         )
     else:
         try:
-            os.kill(process.pid, signal.SIGTERM)
+            os.killpg(process.pid, signal.SIGTERM)
         except ProcessLookupError:
-            return
+            pass
     try:
         process.wait(timeout=5)
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=5)
+    if os.name != "nt":
+        # The browser parent can exit before its profile-writing children.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def cleanup_profile(profile: tempfile.TemporaryDirectory[str]) -> None:
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            profile.cleanup()
+            return
+        except OSError as error:
+            if (
+                error.errno not in (errno.ENOTEMPTY, errno.EACCES, errno.EBUSY)
+                or time.monotonic() >= deadline
+            ):
+                raise
+            time.sleep(0.1)
 
 
 def parse_args() -> argparse.Namespace:
@@ -357,6 +381,7 @@ def main() -> int:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=chrome_log,
+            start_new_session=os.name != "nt",
             **hidden_process_kwargs(),
         )
         try:
@@ -397,13 +422,15 @@ def main() -> int:
         )
         return 0
     finally:
-        terminate_process_tree(chrome_process)
-        chrome_log.close()
-        if "profile" in locals():
-            profile.cleanup()
-        server.shutdown()
-        server.server_close()
-        server_thread.join(timeout=2)
+        try:
+            terminate_process_tree(chrome_process)
+            chrome_log.close()
+            if "profile" in locals():
+                cleanup_profile(profile)
+        finally:
+            server.shutdown()
+            server.server_close()
+            server_thread.join(timeout=2)
 
 
 if __name__ == "__main__":
