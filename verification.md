@@ -56,7 +56,7 @@ git diff --exit-code -- include/setup-page.h
 pio run -e cyd
 ```
 
-LinuxのCIでは `pio test -e native` を使用します。GitHub上のCI実行・リリース公開は、この作業では行っていません。
+LinuxのCIでは `pio test -e native` を使用します。[GitHub CI](https://github.com/roflsunriz/esp32-codex-usage/actions/runs/34387538143) でC++28件、Python4件、ブラウザ試験、ESP32ビルドと成果物アップロードの成功を確認しました。初回公開は未検証の認証項目を明記したベータ版とします。
 
 診断版は `pio run -e cyd-diagnostics` でビルドします。USB 921600bpsへ1行のJSONで `{"cmd":"state"}`、`{"cmd":"touch","x":155,"y":15,"pressed":true}`、`{"cmd":"boot","pressed":true}` などを送り、各応答後に次の操作を行います。押下後は `pressed:false` で離し、`physical` で合成入力を解除します。`screen` の応答はJSONヘッダー、`bytes` バイトのRGB画像、改行の順です。診断版は配布しません。
 
