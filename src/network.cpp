@@ -44,6 +44,9 @@ void publish() {
   current.timeoutMs = settings.timeoutMs;
   current.displayFlipped = settings.displayFlipped;
   current.wifiDisconnectReason = disconnectReason.load();
+#ifdef USAGE_DIAGNOSTICS
+  current.tokenExpiresAt = tokens.expiresAt;
+#endif
   if (xSemaphoreTake(snapshotMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
     published = current;
     xSemaphoreGive(snapshotMutex);
@@ -214,7 +217,13 @@ bool persistTokens() {
 }
 
 bool refreshTokens() {
-  if (client.refresh(tokens)) return persistTokens();
+  if (client.refresh(tokens)) {
+    if (!persistTokens()) return false;
+#ifdef USAGE_DIAGNOSTICS
+    ++current.tokenRefreshes;
+#endif
+    return true;
+  }
   current.status = client.error;
   if (client.refreshRejected) {
     tokens = Tokens{};
@@ -253,6 +262,14 @@ void updateUsage() {
 
 void processCommand(const Command& command) {
   switch (command.type) {
+#ifdef USAGE_DIAGNOSTICS
+    case CommandType::RefreshToken:
+      if (!tokens.refresh.isEmpty() && !loginPending) {
+        tokens.expiresAt = 0;
+        requestRefresh = true;
+      }
+      break;
+#endif
     case CommandType::Refresh:
       requestRefresh = true;
       break;

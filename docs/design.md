@@ -55,9 +55,9 @@ Wi-Fiの関連付けとIPアドレス取得を区別し、接続試行は30秒�
 
 使用量エンドポイントは公開API契約ではなく、公式ログイン済みクライアントが使うprivate endpointである。レスポンス形式、認証方式、利用可否は変更され得るため、失敗を空データとして隠さず、再ログインや後で再試行できる状態にする。
 
-2026-09-10にFirefoxの認証済みセッションから実レスポンスを確認したところ、HTTP 200で通常の `rate_limit.primary_window` は604,800秒・使用率21、`secondary_window` は未提供だった。5時間（18,000秒）が提供されない場合は画面を `--` / unavailable とし、週間値や `additional_rate_limits` のSpark枠を5時間の代わりに使わない。別クォータを別ウィンドウへ置き換えると、表示値の意味が変わるためである。ESP32からの同じ経路の実機通信はまだ未検証である。
+2026-09-10の実アカウントでは、通常の `rate_limit.primary_window` は604,800秒で、`secondary_window` は未提供だった。5時間（18,000秒）が提供されない場合は画面を `--` / unavailable とし、週間値や `additional_rate_limits` のSpark枠を5時間の代わりに使わない。別クォータを別ウィンドウへ置き換えると、表示値の意味が変わるためである。ESP32自身の初回認証とトークン更新を経た使用量取得も実機で確認した。
 
-トークンとWi-Fi設定は [include/config-store.h](../include/config-store.h) / [src/config-store.cpp](../src/config-store.cpp) でNVS namespace `codex-usage` に保存する。設定とトークンはそれぞれversion 1のJSONエントリとし、読み込み時に長さ、期限、タイムアウトを検証する。壊れたエントリは削除して再設定を促す。
+トークンとWi-Fi設定は [include/config-store.h](../include/config-store.h) / [src/config-store.cpp](../src/config-store.cpp) でNVS namespace `codex-usage` に保存する。設定はversion 2、トークンはversion 1のJSON blobとし、読み込み時に長さ、期限、タイムアウトを検証する。壊れたエントリは削除して再設定を促す。
 
 TLSは [include/trusted-roots.h](../include/trusted-roots.h) のルート証明書で検証する。証明書は [scripts/update-ca.py](../scripts/update-ca.py) で公式配布元から更新し、対象ホストのTLS接続を確認する。APIキーは使わない。
 

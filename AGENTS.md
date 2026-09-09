@@ -39,3 +39,4 @@ Get-Content -Raw -LiteralPath .\COMMON-AGENTS.md
 - Windowsの検証APでは再起動後にWi-Fi関連付けだけ成功し、DHCPのSELECTINGが続く挙動を実測した。`src/dhcp-broadcast.cpp` でIP未取得時の応答をRFC 2131 §4.1のブロードキャストで要求すると再接続した。`--wrap=dhcp_append_extra_opts` はこの処理に必要。SDK更新時はフックの宣言と実機再接続を再検証し、固定IP・MAC変更で代替しない。
 - 描画は320×240の8-bit SpriteをWi-Fi開始前に確保し、完成フレームを一度だけLCDへ転送する。実LCDへ直接全消去→各部描画を繰り返すと操作のたびにちらつくため、描画先の変更時はこの経路を維持する。
 - Linux CIのChromeは親終了後も子プロセスが一時プロファイルへ書き込む場合がある。`scripts/test-setup-ui.py` は専用セッションで起動し、プロセスグループを終了してから期限付きで削除する。Windows専用GPU起動オプションをLinuxへ適用するとSIGTRAPで起動できなかったため、OS分岐を維持する。
+- 2026-09-10: 空の認証NVSから公式ページでユーザーがコードを承認し、ESP32自身の交換・保存・使用量取得を確認した。診断版の `refresh-token` はRAMの期限のみ0にして通常更新経路を実行する。実更新3回（再起動後の保存済み更新トークン使用を含む）が成功。初回に一度だけ応答形式エラーがあり原因未確定のため、再現時は秘密情報を出さない `HTTP_PARSE` 診断を確認する。詳細は `verification.md`。

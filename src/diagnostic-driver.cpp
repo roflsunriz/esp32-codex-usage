@@ -96,6 +96,9 @@ void appendState(JsonDocument& document, lgfx::LGFX_Device& display, const Displ
   document["timeoutMs"] = state.timeout();
   document["connected"] = snapshot.connected;
   document["authenticated"] = snapshot.authenticated;
+  document["deviceCode"] = snapshot.deviceCode;
+  document["tokenRefreshes"] = snapshot.tokenRefreshes;
+  document["tokenExpiresAt"] = snapshot.tokenExpiresAt;
   document["displayFlipped"] = snapshot.displayFlipped;
   document["buffered"] = frameBuffered;
   document["wifiDisconnectReason"] = snapshot.wifiDisconnectReason;
@@ -161,6 +164,12 @@ void parseCommand() {
   }
   const char* command = commandValue.as<const char*>();
   if (strcmp(command, "state") == 0) {
+    pending = Pending::State;
+  } else if (strcmp(command, "refresh-token") == 0) {
+    if (!usage::sendCommand({usage::CommandType::RefreshToken, 0})) {
+      queueError("command_queue_full");
+      return;
+    }
     pending = Pending::State;
   } else if (strcmp(command, "screen") == 0) {
     pending = Pending::Screen;

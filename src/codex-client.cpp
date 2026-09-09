@@ -53,8 +53,17 @@ int request(const String& url, const String& body, const Tokens* tokens, bool fo
     code = http.GET();
   if (code > 0) {
     LimitedBody buffer;
-    const bool invalid = http.getSize() > static_cast<int>(kMaxBody) ||
-                         http.writeToStream(&buffer) < 0 || deserializeJson(output, buffer.text);
+    const int declared = http.getSize();
+    const int received = declared > static_cast<int>(kMaxBody) ? -1 : http.writeToStream(&buffer);
+    const auto parsed = deserializeJson(output, buffer.text);
+    const bool invalid = declared > static_cast<int>(kMaxBody) || received < 0 || parsed;
+#ifdef USAGE_DIAGNOSTICS
+    if (invalid) {
+      Serial.printf("HTTP_PARSE status=%d declared=%d received=%d length=%u parse=%s heap=%u\n",
+                    code, declared, received, static_cast<unsigned>(buffer.text.length()),
+                    parsed.c_str(), ESP.getFreeHeap());
+    }
+#endif
     if (invalid && code >= 200 && code < 300) code = -2;
   }
   http.end();

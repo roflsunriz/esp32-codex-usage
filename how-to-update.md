@@ -8,7 +8,7 @@
 - `requirements-dev.txt` のPlatformIOとesptoolを専用venvへ導入する。
 - グローバルPythonへ依存をインストールしない。
 - USBシリアルモニターを閉じ、対象ESP32のポート名を実測する。
-- バックアップ先はリポジトリ外のアクセス制限された場所にする。
+- バックアップ・認証情報・検証ログはGit管理外の `.local/` に置き、共有しない。
 
 PlatformIOは `platformio.ini` の pioarduino platform 55.03.311（Arduino core 3.3.11、ESP-IDF 5.5.5）を使用します。依存キャッシュは `.local/platformio` に分離されます。
 
@@ -31,7 +31,7 @@ Activate.ps1が利用できない環境では、`.local\venv\Scripts\python.exe`
 $env:PYTHONUTF8 = "1"
 python scripts/flash-backup.py backup `
   --port COMx `
-  --file C:\secure\cyd-original-firmware.bin
+  --file .local\cyd-original-firmware.bin
 ```
 
 `cyd-original-firmware.bin.json` が作成されること、4 MB個体ではサイズが4,194,304 bytesになること、esptoolの照合が成功することを確認します。フルイメージにはNVS、Wi-Fi設定、認証情報が含まれる可能性があるため、ログやGitへ内容を出力しません。
@@ -73,7 +73,7 @@ LCDは使用量タブから始まります。接続タブでESP32 APのSSIDと�
 $env:PYTHONUTF8 = "1"
 python scripts/flash-backup.py restore `
   --port COMx `
-  --file C:\secure\cyd-original-firmware.bin
+  --file .local\cyd-original-firmware.bin
 ```
 
 出力に書き戻し後の `verify-flash` 成功があることを確認し、再起動後に元の画面とシリアル起動を確認します。事前に `erase-all` を実行せず、`--force` も使いません。Secure Boot、Flash Encryption、Secure Download Modeのエラーが出た場合は停止し、eFuseを変更しません。

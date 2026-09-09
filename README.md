@@ -4,9 +4,9 @@ ESP32-2432S028R（ILI9341 LCD、XPT2046タッチ）で、Codexの5時間制限�
 
 ## 利用開始
 
-配布ファイルは [v0.1.0-beta.1](https://github.com/roflsunriz/esp32-codex-usage/releases/tag/v0.1.0-beta.1) から取得できます。
+配布ファイルは [リリース一覧](https://github.com/roflsunriz/esp32-codex-usage/releases) から取得できます。
 
-先に [更新・書き込み手順](how-to-update.md) に従って元ファームウェアを退避し、このファームウェアを導入してください。初回の認証承認と更新トークンの実更新は未検証です。確認済みの範囲は [verification.md](verification.md) に記載しています。
+先に [更新・書き込み手順](how-to-update.md) に従って元ファームウェアを退避し、このファームウェアを導入してください。初回認証、ESP32自身によるトークン更新、保存後の再起動と継続利用を実機で確認しています。確認済みの範囲と制約は [verification.md](verification.md) に記載しています。
 
 1. 初回だけUSBで電源を入れます。LCDは最初に「使用量」タブを表示します。
 2. LCDの「接続」タブを開き、表示された `Codex-Usage-XXXX` とランダムなWPA2パスワードを確認します。

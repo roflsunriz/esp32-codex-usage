@@ -19,8 +19,17 @@ struct Snapshot {
   uint32_t timeoutMs = 60000;
   bool displayFlipped = false;
   uint16_t wifiDisconnectReason = 0;
+#ifdef USAGE_DIAGNOSTICS
+  uint32_t tokenRefreshes = 0;
+  int64_t tokenExpiresAt = 0;
+#endif
 };
-enum class CommandType { Refresh, Login, Setup, Timeout, FlipDisplay };
+enum class CommandType {
+  Refresh, Login, Setup, Timeout, FlipDisplay,
+#ifdef USAGE_DIAGNOSTICS
+  RefreshToken,
+#endif
+};
 struct Command {
   CommandType type;
   uint32_t value = 0;
