@@ -29,6 +29,7 @@
 
 - WebServerの既知の修正を含むpioarduino platform 55.03.311（Arduino core 3.3.11、ESP-IDF 5.5.5）へ移行した。
 - 使用量ウィンドウはフィールド順ではなく `limit_window_seconds` で分類し、5時間枠が未提供の場合は代替クォータを表示しない。
+- Linuxでも初期設定画面の検証を実行できるよう、テスト用Chromeの描画オプションをOSに合わせた。
 
 ### Security
 

@@ -326,6 +326,7 @@ def main() -> int:
     server_thread.start()
 
     chrome_process: subprocess.Popen[bytes] | None = None
+    chrome_log = tempfile.TemporaryFile()
     try:
         fixture_port = int(server.server_address[1])
         cdp_port = free_local_port()
@@ -336,10 +337,6 @@ def main() -> int:
             "--no-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
-            "--disable-gpu-compositing",
-            "--disable-gpu-sandbox",
-            "--in-process-gpu",
-            "--use-angle=swiftshader",
             "--mute-audio",
             "--no-first-run",
             "--no-default-browser-check",
@@ -350,14 +347,24 @@ def main() -> int:
             f"--user-data-dir={profile.name}",
             "about:blank",
         ]
+        if os.name == "nt":
+            chrome_args[1:1] = [
+                "--disable-gpu-compositing", "--disable-gpu-sandbox",
+                "--in-process-gpu", "--use-angle=swiftshader",
+            ]
         chrome_process = subprocess.Popen(
             [str(chrome), *chrome_args],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=chrome_log,
             **hidden_process_kwargs(),
         )
-        wait_for_cdp(cdp_port, chrome_process)
+        try:
+            wait_for_cdp(cdp_port, chrome_process)
+        except RuntimeError as error:
+            chrome_log.seek(0)
+            detail = chrome_log.read().decode("utf-8", errors="replace")[-4000:]
+            raise RuntimeError(f"{error}\nChrome startup log:\n{detail}") from error
         environment = os.environ.copy()
         environment["SETUP_BASE_URL"] = base_url
         environment["SETUP_CDP_PORT"] = str(cdp_port)
@@ -391,6 +398,7 @@ def main() -> int:
         return 0
     finally:
         terminate_process_tree(chrome_process)
+        chrome_log.close()
         if "profile" in locals():
             profile.cleanup()
         server.shutdown()
