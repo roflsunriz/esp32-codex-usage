@@ -1,1 +1,9 @@
 COMMON-AGENTS.md
+subagents/
+.local/
+.pio/
+__pycache__/
+*.bin
+*.elf
+*.map
+*.log

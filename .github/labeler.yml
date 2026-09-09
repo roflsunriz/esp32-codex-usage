@@ -1,0 +1,32 @@
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.md'
+          - 'docs/**'
+
+firmware:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/**'
+          - 'include/**'
+          - 'platformio.ini'
+
+web:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'web/**'
+          - 'scripts/embed-web.py'
+          - 'include/setup-page.h'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'requirements-dev.txt'
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'SECURITY.md'
+          - 'scripts/update-ca.py'
+          - 'include/trusted-roots.h'

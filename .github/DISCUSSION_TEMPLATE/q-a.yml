@@ -1,0 +1,20 @@
+title: "[q&a] "
+body:
+  - type: markdown
+    attributes:
+      value: 認証情報や秘密情報を含むログは記載しないでください。
+  - type: textarea
+    id: question
+    attributes:
+      label: 質問
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境
+      description: ボード、OS、PlatformIOと依存ライブラリのバージョンを記載してください。
+  - type: textarea
+    id: attempted
+    attributes:
+      label: 試したこと

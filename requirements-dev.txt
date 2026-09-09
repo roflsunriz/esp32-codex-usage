@@ -1,0 +1,4 @@
+platformio==6.2.0
+esptool==5.4.0
+# PlatformIO Homeの修正済み依存を既存venvにも確実に適用する。
+starlette==1.6.0

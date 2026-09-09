@@ -1,0 +1,13 @@
+title: ""
+body:
+  - type: textarea
+    id: topic
+    attributes:
+      label: 内容
+      description: プロジェクトについて話したい内容を記載してください。
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・関連する資料

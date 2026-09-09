@@ -1,0 +1,18 @@
+title: "[idea] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 利用者の課題
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案と画面・操作の案
+    validations:
+      required: true
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: 制約・トレードオフ

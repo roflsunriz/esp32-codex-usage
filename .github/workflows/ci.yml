@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    name: Test and build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned development tools
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Regenerate embedded setup page
+        run: python scripts/embed-web.py
+
+      - name: Verify generated setup page is committed
+        run: git diff --exit-code -- include/setup-page.h
+
+      - name: Compile Python helpers
+        run: python -m compileall -q scripts
+
+      - name: Run Python unit tests
+        run: python -m unittest discover -s test -p 'test_*.py'
+
+      - name: Run native tests
+        run: pio test -e native
+
+      - name: Test setup UI in headless Chrome
+        run: python scripts/test-setup-ui.py
+
+      - name: Build ESP32 firmware
+        run: pio run -e cyd
+
+      - name: Upload firmware build outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cyd-firmware-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            .pio/build/cyd/firmware.bin
+            .pio/build/cyd/bootloader.bin
+            .pio/build/cyd/partitions.bin
+            .pio/build/cyd/firmware.factory.bin
+            THIRD-PARTY-NOTICES.md
+            LICENSE

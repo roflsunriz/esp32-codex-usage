@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: セキュリティ報告
+    url: https://github.com/roflsunriz/esp32-codex-usage/security/advisories/new
+    about: 公開Issueへ秘密情報を書かず、非公開の報告を使用してください。
