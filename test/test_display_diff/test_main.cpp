@@ -31,9 +31,24 @@ void test_adjacent_bands_are_one_transfer() {
   TEST_ASSERT_EQUAL_UINT32(2, count);
 }
 
+void test_clear_uses_sprite_width_not_panel_initial_width() {
+  struct Surface {
+    int x = -1, y = -1, width = -1, height = -1;
+    void fillRect(int left, int top, int w, int h, uint32_t) {
+      x = left; y = top; width = w; height = h;
+    }
+  } surface;
+  display_diff::clearFrame(surface, 0x0841);
+  TEST_ASSERT_EQUAL_INT(0, surface.x);
+  TEST_ASSERT_EQUAL_INT(0, surface.y);
+  TEST_ASSERT_EQUAL_INT(320, surface.width);
+  TEST_ASSERT_EQUAL_INT(240, surface.height);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_only_changed_bands_are_sent);
   RUN_TEST(test_adjacent_bands_are_one_transfer);
+  RUN_TEST(test_clear_uses_sprite_width_not_panel_initial_width);
   return UNITY_END();
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include "display-diff.h"
 #include "japanese-font.h"
 
 // 通知用CYDと同じ16px Unifont字形で TFT_eSPI 本体またはSpriteへ描画する。
@@ -11,7 +12,7 @@ class UiCanvas {
   void setTextColor(uint16_t fg, uint16_t bg) { fg_ = fg; bg_ = bg; }
   void setTextSize(uint8_t) {}
   void setTextWrap(bool, bool) {}
-  void fillScreen(uint16_t color) { target_->fillScreen(color); }
+  void fillScreen(uint16_t color) { display_diff::clearFrame(*target_, color); }
   void fillRoundRect(int x, int y, int w, int h, int r, uint16_t color) {
     target_->fillRoundRect(x, y, w, h, r, color);
   }
