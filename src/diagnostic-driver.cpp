@@ -90,7 +90,7 @@ String boundedStatus(const String& source) {
   }
   return result;
 }
-void appendState(JsonDocument& document, lgfx::LGFX_Device& display, const DisplayState& state,
+void appendState(JsonDocument& document, CodexUsageDisplay& display, const DisplayState& state,
                  const usage::Snapshot& snapshot) {
   document["awake"] = state.awake();
   document["timeoutMs"] = state.timeout();
@@ -137,7 +137,7 @@ void appendState(JsonDocument& document, lgfx::LGFX_Device& display, const Displ
   document["updatedAt"] = snapshot.updatedAt;
   document["width"] = display.width();
   document["height"] = display.height();
-  document["rotation"] = display.getRotation();
+  document["rotation"] = display.getRotation() == 3U ? 2U : 0U;
   document["freeHeap"] = ESP.getFreeHeap();
   document["brightness"] = display.getBrightness();
 }
@@ -219,7 +219,7 @@ void parseCommand() {
     queueError("unknown_cmd");
   }
 }
-void sendScreen(lgfx::LGFX_Device& display, const DisplayState& state,
+void sendScreen(CodexUsageDisplay& display, const DisplayState& state,
                 const usage::Snapshot& snapshot) {
   const int32_t width = display.width();
   const int32_t height = display.height();
@@ -320,7 +320,7 @@ bool redrawRequested() {
   redraw = false;
   return result;
 }
-void finishFrame(lgfx::LGFX_Device& display, const DisplayState& state,
+void finishFrame(CodexUsageDisplay& display, const DisplayState& state,
                  const usage::Snapshot& snapshot, bool buffered) {
   frameBuffered = buffered;
   if (pending == Pending::None) return;

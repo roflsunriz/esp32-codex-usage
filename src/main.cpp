@@ -1,15 +1,19 @@
 #include <Arduino.h>
 
 #include "app-model.h"
-#include "board-display.h"
+#include "notification-display.h"
 #include "boot-button.h"
 #include "diagnostic-driver.h"
+#include "display-diff.h"
 #include "display-state.h"
+#include "ui-canvas.h"
 
 namespace {
 
 CodexUsageDisplay gDisplay;
-LGFX_Sprite gCanvas(&gDisplay);
+TFT_eSprite gCanvas(&gDisplay);
+UiCanvas gFrame(gDisplay);
+display_diff::Bands gBandDiff;
 DisplayState gDisplayState;
 BootButton gBootButton;
 usage::Snapshot gSnapshot;
@@ -20,9 +24,10 @@ constexpr size_t kFrameBufferBytes = static_cast<size_t>(kFrameWidth) * kFrameHe
 bool gCanvasReady = false;
 bool gCanvasFailure = false;
 
-lgfx::LovyanGFX& frameTarget() {
-  return gCanvasReady ? static_cast<lgfx::LovyanGFX&>(gCanvas)
-                      : static_cast<lgfx::LovyanGFX&>(gDisplay);
+UiCanvas& frameTarget() {
+  gFrame.use(gCanvasReady ? static_cast<TFT_eSPI&>(gCanvas)
+                          : static_cast<TFT_eSPI&>(gDisplay));
+  return gFrame;
 }
 
 constexpr uint32_t kSnapshotPeriodMs = 250U;
@@ -343,7 +348,6 @@ void drawFrame(uint32_t now) {
   }
 
   frameTarget().fillScreen(kBackground);
-  frameTarget().setFont(&fonts::lgfxJapanGothic_16);
   frameTarget().setTextSize(1U);
   frameTarget().setTextWrap(false, false);
   drawTabs();
@@ -360,7 +364,17 @@ void drawFrame(uint32_t now) {
       break;
   }
   if (gCanvasReady) {
-    gCanvas.pushSprite(&gDisplay, 0, 0);
+    const uint16_t changed = gBandDiff.update(
+        static_cast<const uint8_t*>(gCanvas.getPointer()));
+    if (!display_diff::eachRun(changed, [](size_t top, size_t height) {
+          return gCanvas.pushSprite(0, static_cast<int32_t>(top), 0,
+                                    static_cast<int32_t>(top),
+                                    static_cast<int32_t>(display_diff::kWidth),
+                                    static_cast<int32_t>(height));
+        })) {
+      gCanvas.pushSprite(0, 0);
+      gBandDiff.invalidate();
+    }
   }
   gDirty = false;
 }
@@ -455,8 +469,9 @@ void updateSnapshot(uint32_t now) {
   gSnapshot = next;
   bool orientationChanged = false;
   if (!gDisplayOrientationKnown || gAppliedDisplayFlipped != gSnapshot.displayFlipped) {
-    // board-display.h の offset_rotation=1 では 0/2 が横長の表裏になる。
-    gDisplay.setRotation(gSnapshot.displayFlipped ? 2U : 0U);
+    // TFT_eSPIのrotation 1/3が横長の表裏になる。
+    gDisplay.setRotation(gSnapshot.displayFlipped ? 3U : 1U);
+    gBandDiff.invalidate();
     gAppliedDisplayFlipped = gSnapshot.displayFlipped;
     gDisplayOrientationKnown = true;
     orientationChanged = true;
@@ -483,6 +498,7 @@ void syncAwake() {
   gLastAwake = awake;
   gDisplay.setBrightness(awake ? 255U : 0U);
   if (awake) {
+    gBandDiff.invalidate();
     gDirty = true;
   }
 }
@@ -496,11 +512,12 @@ void setup() {
 #endif
   const uint32_t now = millis();
   gDisplay.init();
+  gDisplay.setRotation(1);
+  gDisplay.beginTouch();
   gCanvas.setColorDepth(8U);
   gCanvasReady = gCanvas.createSprite(kFrameWidth, kFrameHeight) != nullptr;
   gCanvasFailure = !gCanvasReady;
   if (gCanvasReady) {
-    gCanvas.setFont(&fonts::lgfxJapanGothic_16);
     gCanvas.setTextSize(1U);
     gCanvas.setTextWrap(false, false);
   }
@@ -511,8 +528,7 @@ void setup() {
   Serial.print(gCanvasReady ? kFrameBufferBytes : 0U);
   Serial.println("}");
 #endif
-  // board-display.h の panel offset_rotation=1 が 320x240 の横長を選ぶ。
-  // ここで setRotation(1) を重ねると内部回転が 2 になり縦長になる。
+  // TFT_eSPIのrotation 1で320x240の横長を選ぶ。
   gDisplay.setBrightness(255U);
   gDisplayState.setTimeout(gDisplayState.timeout(), now);
   pinMode(kBootPin, INPUT_PULLUP);
@@ -539,9 +555,15 @@ void loop() {
 #ifdef USAGE_DIAGNOSTICS
   usage::diagnostics::bootOverride(bootPressed);
 #endif
-  if (gBootButton.update(bootPressed, now)) {
+  const BootAction bootAction = gBootButton.update(bootPressed, now);
+  if (bootAction != BootAction::None) {
     gDisplayState.wake(now);
-    if (sendCommand(usage::CommandType::FlipDisplay)) {
+    if (bootAction == BootAction::Calibrate) {
+      gDisplay.calibrateTouch();
+      gBandDiff.invalidate();
+      gDisplayState.wake(millis());
+      gDirty = true;
+    } else if (sendCommand(usage::CommandType::FlipDisplay)) {
       setLocalNotice(String("表示向きを切替中"), now);
     }
   }

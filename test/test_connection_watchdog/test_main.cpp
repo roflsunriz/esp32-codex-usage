@@ -3,6 +3,9 @@
 
 #include "connection-watchdog.h"
 
+void setUp() {}
+void tearDown() {}
+
 namespace {
 
 uint32_t add(uint32_t value, uint32_t delta) { return static_cast<uint32_t>(value + delta); }

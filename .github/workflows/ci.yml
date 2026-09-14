@@ -33,6 +33,9 @@ jobs:
       - name: Verify generated setup page is committed
         run: git diff --exit-code -- include/setup-page.h
 
+      - name: Verify generated display font is committed
+        run: python scripts/generate-font.py && git diff --exit-code -- include/japanese-font.h
+
       - name: Compile Python helpers
         run: python -m compileall -q scripts
 

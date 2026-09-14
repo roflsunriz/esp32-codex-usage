@@ -29,7 +29,11 @@ LCDは横向き320×240で、次の3タブを持ちます。
 
 消灯後の最初のタッチは復帰専用です。タッチを離すまでボタン操作として扱わず、リリース後の次のタッチから操作できます。消灯中もネットワーク更新は続きます。
 
-本体のBOOTボタンを単押しすると、表示を180度回転します。回転状態はNVSへ保存され、次回起動にも引き継がれます。消灯中は点灯して反転します。起動時にBOOTを押し続ける操作はESP32の書き込みモードに使われるため、起動後に操作してください。
+画面は内容が変わった領域だけを転送し、更新時のちらつきを抑えます。
+
+本体のBOOTボタンを短く押して離すと、表示を180度回転します。回転状態はNVSへ保存され、次回起動にも引き継がれます。消灯中は点灯して反転します。タッチ位置がずれる、または軽いペン操作が反応しない場合は、起動後にBOOTを1.5秒以上押して離し、画面の左上と右下の十字を普段使うペンで押して離します。位置と押圧感度が本体に保存されます。電源投入時はBOOTを押さないでください。
+
+新しい描画・入力方式と校正はビルドとネイティブテストまで確認済みで、専用基板での操作確認は[検証手順](verification.md)に残っています。
 
 ## ビルドプロファイル
 
@@ -55,14 +59,14 @@ python scripts/test-native.py
 
 本番環境は、pioarduinoのPlatformIO platform 55.03.311（Arduino core 3.3.11、ESP-IDF 5.5.5）を使うArduino ESP32です。旧Arduino core 2.0.17はWebServerの既知の修正（GHSA-8cmm-3887-r32j、GHSA-5476-9jjq-563m）が不足するため使用しません。
 
-- `lovyan03/LovyanGFX@1.2.28`
+- `bodmer/TFT_eSPI@2.5.43`
 - `bblanchon/ArduinoJson@7.4.3`
 - ネイティブテスト: `throwtheswitch/Unity@2.6.1`
 - 開発ツール: `platformio==6.1.19`、`esptool==5.4.0`
 
 PlatformIOのキャッシュは `platformio.ini` の `core_dir = .local/platformio` に分離しています。開発ツールはグローバルPythonへ入れず、プロジェクト外または専用venvで管理してください。
 
-画面のピン設定は [include/board-display.h](include/board-display.h)、表示状態は [include/display-state.h](include/display-state.h)、ネットワーク統合は [src/network.cpp](src/network.cpp)、認証通信は [src/codex-client.cpp](src/codex-client.cpp)、Web設定画面は [web/setup.html](web/setup.html) にあります。
+画面とタッチ入力は [include/notification-display.h](include/notification-display.h)、表示状態は [include/display-state.h](include/display-state.h)、ネットワーク統合は [src/network.cpp](src/network.cpp)、認証通信は [src/codex-client.cpp](src/codex-client.cpp)、Web設定画面は [web/setup.html](web/setup.html) にあります。
 
 ## セキュリティと復旧
 

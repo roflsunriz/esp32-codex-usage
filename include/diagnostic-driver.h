@@ -6,7 +6,7 @@
 #include <Arduino.h>
 #include <stdint.h>
 
-#include <LovyanGFX.hpp>
+#include "notification-display.h"
 
 #include "app-model.h"
 #include "display-state.h"
@@ -29,7 +29,7 @@ bool bootOverride(bool& pressed);
 bool redrawRequested();
 
 // 画面描画後に、保留中コマンドへの応答を送信する。
-void finishFrame(lgfx::LGFX_Device& display, const DisplayState& state,
+void finishFrame(CodexUsageDisplay& display, const DisplayState& state,
                  const usage::Snapshot& snapshot, bool buffered);
 
 }  // namespace diagnostics

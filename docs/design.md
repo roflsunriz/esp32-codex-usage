@@ -4,13 +4,13 @@
 
 ESP32-2432S028Rが、Codexの5時間制限と週間制限を自律的に表示し、Wi-Fi経由で約60秒ごとに更新する。初期設定とブラウザデバイス認証だけはPCまたはスマートフォンを使うが、その後の常時接続は要求しない。初期設定APは15分で自動停止し、接続タブから再開できる。
 
-対象ボードはESP32-WROOM-32、4 MBフラッシュ、ILI9341、XPT2046、2.8インチ320×240 LCDである。表示とタッチは別SPI配線なので、LovyanGFXで別SPIホストを明示する。
+対象ボードはESP32-WROOM-32、4 MBフラッシュ、ILI9341、XPT2046、2.8インチ320×240 LCDである。表示はTFT_eSPIのHSPI、タッチは別VSPIで扱う。
 
 ## 構成
 
 ```text
 main.cpp
-  ├─ CodexUsageDisplay / LovyanGFX
+  ├─ CodexUsageDisplay / TFT_eSPI + SensitiveXpt2046
   ├─ DisplayState ── 消灯・復帰・操作の状態遷移
   └─ app-model ── Snapshot / Command
                    │
@@ -25,15 +25,15 @@ main.cpp
 
 ## 表示層
 
-[include/board-display.h](../include/board-display.h) は、LovyanGFX 1.2.28の `LGFX_Device` をボード固有設定で構成する。TFTはGPIO14/12/13/15/2、backlightはGPIO21、タッチはGPIO25/39/32/33/36である。TFTは `SPI2_HOST`、タッチは `SPI3_HOST`、TFTのリセットはボードEN/RST接続として `-1` にする。
+[include/notification-display.h](../include/notification-display.h) は通知用CYDと同じTFT_eSPI表示、別VSPIの`SensitiveXpt2046`入力をボードに接続する。TFTはGPIO14/12/13/15/2、backlightはGPIO21、タッチはGPIO25/39/32/33/36である。TFTのリセットはボードEN/RST接続として `-1` にする。
 
-ILI9341は内部240×320として設定し、`offset_rotation=1`で初期表示を横向き320×240にする。タッチのraw範囲はX 300–3900、Y 3700–200、タッチ側のバスは表示と共有しない。backlight PWMは低周波1200 Hzを使い、消灯は輝度0で行う。
+ILI9341はrotation 1で初期表示を横向き320×240にする。タッチの初期raw範囲はX 200–3700、Y 240–3800で、2点校正値と押圧閾値をNVS `usage-touch` の単一blobへ保存する。backlight PWMは5kHz・8-bitとし、消灯は輝度0で行う。PWM設定に失敗した場合はON/OFFへフォールバックする。
 
 [include/display-state.h](../include/display-state.h) はドライバから独立した状態機械である。消灯期限を過ぎると `awake=false` になり、消灯中の最初の押下は復帰だけに消費する。リリース後の次の立ち上がりだけをUI操作として返す。タイマー差分はunsignedのラップアラウンドを利用する。
 
-GPIO0のBOOTボタンは起動後の単押しで表示回転を切り替える。回転は0度/180度を設定値として保存し、LovyanGFXの表示回転とタッチ座標変換へ同じ状態を反映する。設定データはversion 1からversion 2へ移行し、旧データは回転なし（`displayFlipped=false`）で補完する。起動時にBOOTが押されている場合はESP32 ROMの書き込みモードを優先し、ランタイム操作とは混同しない。
+GPIO0のBOOTボタンは起動後の短押しで表示回転を切り替え、1.5秒以上の長押しで2点の位置・押圧感度調整を開始する。回転は0度/180度を設定値として保存し、TFT_eSPIのrotation 1/3とタッチ座標変換へ同じ状態を反映する。既存の設定データはversion 1からversion 2へ移行し、旧データは回転なし（`displayFlipped=false`）で補完する。起動時にBOOTが押されている場合はESP32 ROMの書き込みモードを優先し、ランタイム操作とは混同しない。
 
-描画はWi-Fi開始前に確保した320×240の8-bit Sprite上で完成させ、1回の転送でLCDへ反映する。約76.8 KBを使い、全画面を消してから要素を描く途中経過が見えるちらつきを防ぐ。
+描画はWi-Fi開始前に確保した320×240の8-bit TFT_eSprite上で完成させ、16行ごとの変化を比較して連続した変更帯だけLCDへ送る。約76.8 KBを使い、全画面を消してから要素を描く途中経過が見えるちらつきを防ぐ。回転・復帰・校正後は全帯を再転送する。日本語は`assets/unifont-jp.hex.gz`から`scripts/generate-font.py`で生成した16px字形を使う。
 
 Wi-Fiの関連付けとIPアドレス取得を区別し、接続試行は30秒、DHCP待ちは120秒の猶予を取る。検証APでは再起動後にDHCPの応答待ちが続いたため、IP未取得時はRFC 2131 §4.1のBROADCASTビットで応答を要求する。`src/dhcp-broadcast.cpp` はSDKの追加オプション処理を保持してこのビットだけを設定し、取得後の更新要求は変更しない。根拠は [RFC 2131](https://www.rfc-editor.org/info/rfc2131/) と `lwip_default_hooks.h` の宣言。SDK更新時はリンクフックと実機再接続を確認する。
 
@@ -75,7 +75,7 @@ TLSは [include/trusted-roots.h](../include/trusted-roots.h) のルート証明�
 
 ## 依存関係と検証
 
-PlatformIOの対象環境は、pioarduino platform 55.03.311、Arduino core 3.3.11、ESP-IDF 5.5.5、`esp32dev`である。旧Arduino core 2.0.17はWebServerの既知の修正（GHSA-8cmm-3887-r32j、GHSA-5476-9jjq-563m）が不足するため採用しない。画面はLovyanGFX 1.2.28、JSONはArduinoJson 7.4.3、ネイティブ状態テストはUnity 2.6.1を使う。実機書き込み前にフルフラッシュを保存し、検証後は `scripts/flash-backup.py restore` で元イメージを0x0へ復元する。Secure Boot/Flash Encryptionに対するeFuse操作は設計対象外である。
+PlatformIOの対象環境は、pioarduino platform 55.03.311、Arduino core 3.3.11、ESP-IDF 5.5.5、`esp32dev`である。旧Arduino core 2.0.17はWebServerの既知の修正（GHSA-8cmm-3887-r32j、GHSA-5476-9jjq-563m）が不足するため採用しない。画面はTFT_eSPI 2.5.43、JSONはArduinoJson 7.4.3、ネイティブ状態テストはUnity 2.6.1を使う。実機書き込み前にフルフラッシュを保存し、検証後は `scripts/flash-backup.py restore` で元イメージを0x0へ復元する。Secure Boot/Flash Encryptionに対するeFuse操作は設計対象外である。
 
 通常の出荷用プロファイルは `cyd` で、診断用の `cyd-diagnostics` は合成タッチ・仮想時刻・画面状態取得を行うテスト専用である。診断デモのWebアクセスfixtureはHTTP/UI経路用で、実アカウントのtoken refreshを再現しない。
 
@@ -84,6 +84,6 @@ PlatformIOの対象環境は、pioarduino platform 55.03.311、Arduino core 3.3.
 ## 情報源
 
 - デバイス認証の公式案内: https://learn.chatgpt.com/docs/auth
-- LovyanGFXのCYD設定例: https://github.com/lovyan03/LovyanGFX/issues/637
+- TFT_eSPI公式リポジトリ: https://github.com/Bodmer/TFT_eSPI
 - Espressif esptool: https://docs.espressif.com/projects/esptool/en/latest/esp32/esptool/basic-commands.html
 - 初期調査時の公式ソース取得コミット: `.local/codex-source` の `17e64839eb1e30632eef4a0147862345fccb61cc`

@@ -4,8 +4,9 @@
 
 | コンポーネント | 用途 | ライセンス・表示 | 確認した場所 / 公式情報 |
 |---|---|---|---|
-| LovyanGFX 1.2.28 | ILI9341表示、XPT2046タッチ、フォント基盤 | FreeBSD License。配布元のlicense.txtにはAdafruit ILI9341（MIT）、Adafruit GFX（BSD）、TFT_eSPI（FreeBSD）の原 notices も含まれる | `.pio/libdeps/cyd/LovyanGFX/license.txt` / https://github.com/lovyan03/LovyanGFX |
-| IPAフォント（IPAexGothic等） | LCDの日本語表示 | IPA Font License Agreement v1.0 | `.pio/libdeps/cyd/LovyanGFX/src/lgfx/Fonts/IPA/IPA_Font_License_Agreement_v1.0.txt` / https://moji.or.jp/ipafont/ |
+| TFT_eSPI 2.5.43 | ILI9341表示と8-bit Sprite描画 | MIT/BSD/FreeBSDの原通知を同梱license.txtで確認 | `.pio/libdeps/cyd/TFT_eSPI/license.txt` / https://github.com/Bodmer/TFT_eSPI |
+| Unifont JP 17.0.05 | LCDの16px日本語字形 | SIL Open Font License 1.1 | `licenses/unifont-OFL-1.1.txt` / https://unifoundry.com/unifont/ |
+| Sensitive XPT2046 | 押圧値・座標の取得と校正 | Paul Stoffregen原著作権表示を保ったMIT License | `lib/sensitive-xpt2046/src/sensitive-xpt2046.cpp` / https://github.com/PaulStoffregen/XPT2046_Touchscreen |
 | ArduinoJson 7.4.3 | 使用量・設定JSON | MIT License（Benoit Blanchon） | `.pio/libdeps/cyd/ArduinoJson/LICENSE.txt` / https://github.com/bblanchon/ArduinoJson |
 | Arduino ESP32 core 3.3.11 | ESP32 Arduinoフレームワーク | コンポーネントごとにLGPL-2.1-or-later、Apache-2.0等の表示がある混合物。個別ファイルのSPDX・原文を優先する | `.local/platformio/packages/framework-arduinoespressif32` / https://github.com/espressif/arduino-esp32 |
 | pioarduino platform 55.03.311 | PlatformIOのESP32 platform定義 | Apache-2.0（インストール済み `platform.json` の表示） | `.local/platformio/platforms/espressif32/platform.json` / https://github.com/pioarduino/platform-espressif32 |

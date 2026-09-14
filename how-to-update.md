@@ -42,11 +42,13 @@ python scripts/flash-backup.py backup `
 $env:PYTHONUTF8 = "1"
 python scripts/update-ca.py
 python scripts/embed-web.py
+python scripts/generate-font.py
+git diff --exit-code -- include/japanese-font.h
 python scripts/test-native.py
 pio run -e cyd
 ```
 
-`scripts/embed-web.py` は `web/setup.html` から `include/setup-page.h` を生成します。生成後に差分を確認してください。`python scripts/test-native.py` はWindowsでLLVM/MSVCツールチェーンを使います。最新の確認結果は [verification.md](verification.md) を参照してください。`cyd-diagnostics` はUSB診断用で、productionやリリース成果物には使いません。
+`scripts/embed-web.py` は `web/setup.html` から `include/setup-page.h` を生成します。`scripts/generate-font.py` は表示文言から16px字形を生成します。生成後に差分を確認してください。`python scripts/test-native.py` はWindowsでLLVM/MSVCツールチェーンを使います。最新の確認結果は [verification.md](verification.md) を参照してください。`cyd-diagnostics` はUSB診断用で、productionやリリース成果物には使いません。
 
 リリースの `firmware.factory.bin` は初回導入用の結合イメージで、0x0から書き込むとNVS設定領域も上書きします。通常の更新には、上記のPlatformIO uploadを使ってください。`firmware.bin` はアプリ単体で、同じパーティション構成と互換性のあるブートローダーが必要です。
 
@@ -63,7 +65,7 @@ pio device monitor -p COMx -b 115200
 
 LCDは使用量タブから始まります。接続タブでESP32 APのSSIDとパスワードを確認し、スマートフォンをESP32 APへ接続して `192.168.4.1` を開きます。2.4 GHz Wi-Fiを保存した後、ログインを押してコードを控え、スマートフォンをインターネット回線へ切り替えて公式認証ページで承認します。ESP32は承認を自律的にポーリングします。
 
-起動後のBOOTボタン単押しは表示の180度回転を切り替え、設定はNVSへ保存されます。起動中に押し続けるとESP32の書き込みモードへ入るため、更新前にBOOTを押したまま電源を入れないでください。
+起動後のBOOTボタン短押しは表示の180度回転を切り替え、設定はNVSへ保存されます。1.5秒以上押して離すとタッチ位置と押圧感度の2点調整を開始します。普段使うペンで左上と右下の十字を順に押して離します。電源投入時にはBOOTを押さないでください。
 
 ## 4. 元ファームウェアへ復元
 

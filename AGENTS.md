@@ -37,6 +37,8 @@ Get-Content -Raw -LiteralPath .\COMMON-AGENTS.md
 - 通常配布は `cyd` のみ。`cyd-diagnostics` は画面読み戻し・入力試験用のUSB診断経路を含むため配布しない。診断後は元フラッシュを復元する。Windowsの新コンパイラが `Failed to get path name. Error code: 5` で失敗する場合は、ソース不良と混同せず昇格した同一ビルドで確認する。
 - NVSの設定はversion 2のJSON blobで、version 1は反転なしとして自動移行する。認証もblobを使い、NVS文字列の4000バイト制限を避ける。LCDの基準はpanel offset_rotation=1、通常rotation=0、上下反転rotation=2。タッチを別途二重反転しない。
 - Windowsの検証APでは再起動後にWi-Fi関連付けだけ成功し、DHCPのSELECTINGが続く挙動を実測した。`src/dhcp-broadcast.cpp` でIP未取得時の応答をRFC 2131 §4.1のブロードキャストで要求すると再接続した。`--wrap=dhcp_append_extra_opts` はこの処理に必要。SDK更新時はフックの宣言と実機再接続を再検証し、固定IP・MAC変更で代替しない。
-- 描画は320×240の8-bit SpriteをWi-Fi開始前に確保し、完成フレームを一度だけLCDへ転送する。実LCDへ直接全消去→各部描画を繰り返すと操作のたびにちらつくため、描画先の変更時はこの経路を維持する。
+- 描画は320×240の8-bit SpriteをWi-Fi開始前に確保し、完成フレームから変化した領域だけをLCDへ転送する。実LCDへ直接全消去→各部描画を繰り返すと操作のたびにちらつくため、描画先の変更時はこの経路を維持する。
+- 2026-09-14、描画と入力はnotifications式のTFT_eSPI、16px Unifont字形、別VSPIの `sensitive-xpt2046` に移行した。8-bit Sprite上で完成フレームを描く方式は維持する。BOOT短押しは回転、1.5秒以上の長押しは2点の位置・押圧感度調整。調整値は既存認証・画面設定blobとは別のNVS `usage-touch` の単一`calib` blobに保存し、失敗時は旧値を残す（`src/notification-display.cpp`）。ビルドとホストテストのみ確認済みで、この入力・描画経路の実機確認は未実施。
+- 2026-09-14、再描画は8-bit Spriteの16行帯を比較し、変化した連続帯だけLCDへ転送する（`include/display-diff.h`、`src/main.cpp`）。回転・消灯復帰・タッチ校正では全帯を再転送する。現在の差分転送はホスト/ビルド検証のみで、実機の表示欠け・ちらつきは未確認。
 - Linux CIのChromeは親終了後も子プロセスが一時プロファイルへ書き込む場合がある。`scripts/test-setup-ui.py` は専用セッションで起動し、プロセスグループを終了してから期限付きで削除する。Windows専用GPU起動オプションをLinuxへ適用するとSIGTRAPで起動できなかったため、OS分岐を維持する。
 - 2026-09-10: 空の認証NVSから公式ページでユーザーがコードを承認し、ESP32自身の交換・保存・使用量取得を確認した。診断版の `refresh-token` はRAMの期限のみ0にして通常更新経路を実行する。実更新3回（再起動後の保存済み更新トークン使用を含む）が成功。初回に一度だけ応答形式エラーがあり原因未確定のため、再現時は秘密情報を出さない `HTTP_PARSE` 診断を確認する。詳細は `verification.md`。
