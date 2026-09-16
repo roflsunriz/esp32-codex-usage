@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-static const char kSetupPage[] PROGMEM = R"ESP32SP_78a0e317(
+static const char kSetupPagePrefix[] PROGMEM = R"ESP32SP_78a0e317(
 <!doctype html>
 <html lang="ja">
 <head>
@@ -220,7 +220,8 @@ h1{font-size: 1.8rem;}
     (() => {
       'use strict';
 
-      const SETUP_NONCE = '__SETUP_NONCE__';
+      const SETUP_NONCE = ')ESP32SP_78a0e317";
+static const char kSetupPageSuffix[] PROGMEM = R"ESP32SP_78a0e317(';
       const TIMEOUTS = [15000, 30000, 60000, 120000, 300000, 600000, 1800000, 3600000, 7200000];
 
       const copy = {

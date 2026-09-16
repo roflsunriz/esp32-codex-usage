@@ -30,12 +30,18 @@ def embed(source: Path, destination: Path) -> None:
 
     delimiter = choose_delimiter(page)
     content = page if page.endswith("\n") else f"{page}\n"
+    # Split at the first nonce placeholder so firmware can stream the page
+    # from PROGMEM without copying the whole page into heap RAM.
+    head, _, tail = content.partition(NONCE_PLACEHOLDER)
     header = (
         "#pragma once\n"
         "#include <Arduino.h>\n"
         "\n"
-        f"static const char kSetupPage[] PROGMEM = R\"{delimiter}(\n"
-        f"{content}"
+        f"static const char kSetupPagePrefix[] PROGMEM = R\"{delimiter}(\n"
+        f"{head}"
+        f")" + delimiter + "\";\n"
+        f"static const char kSetupPageSuffix[] PROGMEM = R\"{delimiter}("
+        f"{tail}"
         f")" + delimiter + "\";\n"
     )
     destination.parent.mkdir(parents=True, exist_ok=True)

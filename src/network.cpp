@@ -96,15 +96,21 @@ void configureServer() {
   server.collectHeaders(headers, 1);
   server.on("/", HTTP_GET, [] {
     if (!permitted(false)) return;
-    String page(kSetupPage);
-    page.replace("__SETUP_NONCE__", setupNonce);
+    // Stream the page from PROGMEM in pieces so the ~36KB HTML never needs
+    // a heap copy next to the display frame buffer.
+    const size_t total = strlen_P(kSetupPagePrefix) + setupNonce.length() +
+                         strlen_P(kSetupPageSuffix);
     server.sendHeader("Cache-Control", "no-store");
     server.sendHeader("X-Content-Type-Options", "nosniff");
     server.sendHeader("X-Frame-Options", "DENY");
     server.sendHeader("Content-Security-Policy",
                       "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
                       "frame-ancestors 'none'; form-action 'self'");
-    server.send(200, "text/html; charset=utf-8", page);
+    server.setContentLength(total);
+    server.send(200, "text/html; charset=utf-8", "");
+    server.sendContent_P(kSetupPagePrefix);
+    server.sendContent(setupNonce.c_str(), setupNonce.length());
+    server.sendContent_P(kSetupPageSuffix);
   });
   server.on("/api/state", HTTP_GET, [] {
     if (!permitted(false)) return;
