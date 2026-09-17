@@ -1,5 +1,12 @@
 # 検証手順と結果
 
+## リセット日時表示と5分取得の検証（2026-09-17、実機未検証）
+
+使用量タブの5時間・週間表示へ `reset_at` 由来のリセット日時と残り時間を追加し、自動取得を約60秒から約5分へ変えた。根拠は公式 `openai/codex`（`.local/codex-source`）の `backend-client/src/client.rs`（`reset_at` を `resetsAt` へ写像）、公式料金案内の使用量ダッシュボード参照、CDP実測の未認証 `GET /wham/usage` 応答 `{"detail":"Unauthorized"}` である。ダッシュボード実測はCloudflare確認で到達できず、代替として公式ソースと認証必須応答で裏付けた。
+
+- native 35テスト（新規 `test_reset_format` 4件を含む）、通常版・USB診断版のPlatformIOビルドが成功した。新規文言の字形は `scripts/generate-font.py` で再生成し、不足字形なしを確認した。
+- 残り時間の整形（日・時間／時間・分、期限切れの「更新待ち」、時計未同期の `--`）はホストテストで境界値を確認した。LCD実機での欠け・はみ出し、分の変わり目の再描画、5分周期の実取得は未検証で、診断版の `fiveHourResetsAt`／`weeklyResetsAt` 出力で確認できる。
+
 ## 新規ESP32の導入と設定ページ修正の検証（2026-09-16、実機確認済み）
 
 新規に入手したESP32-2432S028R（ESP32-D0WD-V3、MAC 68:09:47:85:a1:3c）へv0.2.2相当を書き込み、セットアップ完了まで確認した。元フラッシュは `.local/cyd-original-firmware.bin`（4,194,304バイト、SHA-256 `bca8112f22d641d689927217eb223450685ab0b5e022d983ef202d7c8bfdb2b5`）へ退避し、`verify-flash` で一致を確認した。

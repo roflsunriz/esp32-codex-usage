@@ -34,7 +34,8 @@ uint32_t setupStarted = 0;
 ConnectionWatchdog connectionWatchdog;
 uint32_t lastAttempt = 0;
 uint32_t lastPoll = 0;
-uint32_t retryDelay = 60000;
+// 通常の使用量取得は5分間隔。失敗時は2倍ずつ延ばし、成功で5分へ戻す。
+uint32_t retryDelay = 300000;
 bool hadWifi = false;
 std::atomic<uint16_t> disconnectReason{0};
 
@@ -258,7 +259,7 @@ void updateUsage() {
     current.weekly = reading.weekly;
     current.updatedAt = millis();
     current.status = "更新済み";
-    retryDelay = 60000;
+    retryDelay = 300000;
   } else {
     if (!client.error.isEmpty()) current.status = client.error;
     retryDelay = std::min<uint32_t>(retryDelay * 2U, 900000U);

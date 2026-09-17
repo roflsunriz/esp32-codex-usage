@@ -126,12 +126,14 @@ void appendState(JsonDocument& document, CodexUsageDisplay& display, const Displ
   } else {
     document["fiveHourUsed"] = nullptr;
   }
+  document["fiveHourResetsAt"] = snapshot.fiveHour.resetsAt;
   document["weeklyAvailable"] = snapshot.weekly.available;
   if (snapshot.weekly.available && isfinite(snapshot.weekly.used)) {
     document["weeklyUsed"] = snapshot.weekly.used;
   } else {
     document["weeklyUsed"] = nullptr;
   }
+  document["weeklyResetsAt"] = snapshot.weekly.resetsAt;
   document["ip"] = WiFi.localIP().toString();
   document["status"] = boundedStatus(snapshot.status);
   document["updatedAt"] = snapshot.updatedAt;

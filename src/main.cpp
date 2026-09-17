@@ -1,11 +1,14 @@
 #include <Arduino.h>
 
+#include <time.h>
+
 #include "app-model.h"
 #include "notification-display.h"
 #include "boot-button.h"
 #include "diagnostic-driver.h"
 #include "display-diff.h"
 #include "display-state.h"
+#include "reset-format.h"
 #include "ui-canvas.h"
 
 namespace {
@@ -83,6 +86,7 @@ String gLocalNotice;
 uint32_t gLocalNoticeUntil = 0U;
 bool gLastLocalNoticeActive = false;
 bool gLastStale = true;
+uint32_t gLastResetMinute = 0xFFFFFFFFU;
 bool gDisplayOrientationKnown = false;
 bool gAppliedDisplayFlipped = false;
 
@@ -103,6 +107,11 @@ String percentText(const usage::Window& window) {
   String text = String(window.used, 1);
   text += "%";
   return text;
+}
+
+String resetLine(const usage::Window& window) {
+  const int64_t now = static_cast<int64_t>(time(nullptr));
+  return String(usage::resetLineText(window.resetsAt, now).c_str());
 }
 
 bool contains(const Rect& rect, uint16_t x, uint16_t y) {
@@ -281,12 +290,14 @@ void drawUsage(uint32_t now) {
   drawProgress(10U, 88U, 300U, 24U, gSnapshot.fiveHour);
   frameTarget().setTextColor(kAccent, kBackground);
   frameTarget().drawString(percentText(gSnapshot.fiveHour), 256U, 70U);
+  drawFittedText(resetLine(gSnapshot.fiveHour), 10U, 114U, 300U, kMuted);
 
   frameTarget().setTextColor(kText, kBackground);
   frameTarget().drawString(String("週間 使用率"), 10U, 132U);
   drawProgress(10U, 150U, 300U, 24U, gSnapshot.weekly);
   frameTarget().setTextColor(kAccent, kBackground);
   frameTarget().drawString(percentText(gSnapshot.weekly), 256U, 132U);
+  drawFittedText(resetLine(gSnapshot.weekly), 10U, 178U, 300U, kMuted);
 
   String status = visibleStatus(now);
   if (snapshotIsStale(gSnapshot, now)) {
@@ -486,6 +497,19 @@ void updateSnapshot(uint32_t now) {
   }
   if ((changed || timeoutChanged || orientationChanged) && gDisplayState.awake()) {
     gDirty = true;
+  }
+  // 残り時間の分表示を進めるため、取得がなくても分の変わり目で再描画する。
+  const bool hasReset = (gSnapshot.fiveHour.available && gSnapshot.fiveHour.resetsAt > 0) ||
+                        (gSnapshot.weekly.available && gSnapshot.weekly.resetsAt > 0);
+  const int64_t epochNow = static_cast<int64_t>(time(nullptr));
+  if (hasReset && epochNow >= usage::kResetClockReadyEpoch) {
+    const uint32_t bucket = static_cast<uint32_t>(epochNow / 60);
+    if (bucket != gLastResetMinute) {
+      gLastResetMinute = bucket;
+      if (gTab == Tab::Usage && gDisplayState.awake()) {
+        gDirty = true;
+      }
+    }
   }
 }
 
