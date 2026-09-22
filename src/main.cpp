@@ -37,24 +37,26 @@ constexpr uint32_t kSnapshotPeriodMs = 250U;
 constexpr uint32_t kStaleAfterMs = 120000U;
 constexpr uint8_t kBootPin = 0U;
 
-constexpr uint16_t kSliderX0 = 14U;
-constexpr uint16_t kSliderX1 = 296U;
-constexpr uint16_t kSliderMinutesY = 108U;
-constexpr uint16_t kSliderHoursY = 142U;
-constexpr uint16_t kSliderPollY = 176U;
+// Touch positions are calibrated to screen 24..295 (x) and 24..215 (y),
+// so all touch targets must live inside that field.
+constexpr uint16_t kSliderX0 = 24U;
+constexpr uint16_t kSliderX1 = 275U;
+constexpr uint16_t kSliderMinutesY = 112U;
+constexpr uint16_t kSliderHoursY = 148U;
+constexpr uint16_t kSliderPollY = 184U;
 constexpr uint16_t kSliderHalfH = 14U;
 // Settings content below the fixed title (y38). The action row at the
 // content bottom scrolls with the sliders; the scrollbar stays fixed.
-constexpr int32_t kSettingsContentH = 260;
+constexpr int32_t kSettingsContentH = 250;
 constexpr int32_t kSettingsVisibleTop = 38;
 constexpr int32_t kSettingsVisibleBottom = 208;
 constexpr int32_t kSettingsScrollMax =
     kSettingsContentH - (kSettingsVisibleBottom - kSettingsVisibleTop);
-constexpr uint16_t kSettingsScrollBarX0 = 306U;
+constexpr uint16_t kSettingsScrollBarX0 = 283U;
 constexpr uint16_t kSettingsScrollBarY0 = 44;
 constexpr uint16_t kSettingsScrollBarY1 = 204;
 constexpr int32_t kSettingsScrollPage = 40;
-constexpr uint16_t kSettingsActionsY = 224U;
+constexpr uint16_t kSettingsActionsY = 214U;
 
 uint32_t sliderValueFromX(uint16_t x, uint32_t minV, uint32_t maxV,
                           uint32_t step) {
@@ -445,32 +447,31 @@ void drawSettings(uint32_t now) {
                              5U, kAccent);
     }
     frameTarget().fillRect(thumbX > 6U ? thumbX - 6U : 0U,
-                           static_cast<uint16_t>(y - 8U), 12U, 17U, kText);
+                           static_cast<uint16_t>(y - 6U), 12U, 13U, kText);
     frameTarget().fillRect(thumbX > 4U ? thumbX - 4U : 0U,
-                           static_cast<uint16_t>(y - 6U), 8U, 13U, kPanel);
+                           static_cast<uint16_t>(y - 4U), 8U, 9U, kPanel);
   };
 
   if (timeoutMs == 0U) {
-    drawContentLine(74, String("消灯: 常にオン"));
+    drawContentLine(72, String("消灯: 常にオン"));
   } else {
-    drawContentLine(74, String("消灯: ") + String(hours) + String("時間") +
+    drawContentLine(72, String("消灯: ") + String(hours) + String("時間") +
                            String(minutes) + String("分"));
   }
-  drawContentLine(92, String("分 0-59: ") + String(minutes) + String("分"),
+  drawContentLine(90, String("分 0-59: ") + String(minutes) + String("分"),
                   kMuted);
   drawContentSlider(kSliderMinutesY, minutes, 0U,
                     DisplayState::kSleepMinutesMax);
   drawContentLine(126, String("時間 0-24: ") + String(hours) + String("時間"),
                   kMuted);
   drawContentSlider(kSliderHoursY, hours, 0U, DisplayState::kSleepHoursMax);
-  drawContentLine(160, String("取得期間 60-600秒: ") + String(pollSec) +
+  drawContentLine(162, String("取得期間 60-600秒: ") + String(pollSec) +
                            String("秒"),
                   kMuted);
   drawContentSlider(kSliderPollY, pollSec,
                     DisplayState::kPollSliderMinSec,
                     DisplayState::kPollSliderMaxSec);
-  drawContentLine(194, String("0分0時間は常にオン"), kMuted);
-  drawContentLine(206, String("下にドラッグでスクロール"), kMuted);
+  drawContentLine(200, String("0分0時間は常にオン"), kMuted);
   for (size_t i = 0U; i < 1U; ++i) {
     const int16_t y = contentY(kSettingsActionsY);
     if (y < 56 || y > 178) continue;
@@ -608,7 +609,7 @@ int32_t settingsContentY(uint16_t y) {
 // Settings slider tap in content coordinates. Returns true when a slider
 // handled the tap (and fixes the drag gesture mode).
 bool handleSettingsSlider(uint16_t x, int32_t contentY, uint32_t now) {
-  if (x < 6U || x > 304U) {
+  if (x < 16U || x > 283U) {
     return false;
   }
   if (contentY >= static_cast<int32_t>(kSliderMinutesY) - 14 &&
@@ -642,8 +643,8 @@ bool handleSettingsSlider(uint16_t x, int32_t contentY, uint32_t now) {
 }
 
 bool handleSettingsScrollBar(uint16_t x, uint16_t y) {
-  if (x < kSettingsScrollBarX0 || y < kSettingsScrollBarY0 ||
-      y >= kSettingsScrollBarY1) {
+  // Scrollbar wins over the slider end zone.
+  if (x < 281U || y < kSettingsScrollBarY0 || y >= kSettingsScrollBarY1) {
     return false;
   }
   const int32_t trackH = kSettingsScrollBarY1 - kSettingsScrollBarY0;
@@ -734,7 +735,7 @@ void handleDragMove(uint16_t x, uint16_t y, uint32_t now) {
       gDragKind == DragKind::PollInterval) {
     // Keep adjusting the same slider while the contact continues, even if
     // the finger drifts off its row.
-    if (x < 6U || x > 304U) {
+    if (x < 16U || x > 283U) {
       return;
     }
     if (gDragKind == DragKind::SleepMinutes) {
