@@ -16,6 +16,9 @@ class UiCanvas {
   void fillRect(int x, int y, int w, int h, uint16_t color) {
     target_->fillRect(x, y, w, h, color);
   }
+  void drawRect(int x, int y, int w, int h, uint16_t color) {
+    target_->drawRect(x, y, w, h, color);
+  }
   void fillRoundRect(int x, int y, int w, int h, int r, uint16_t color) {
     target_->fillRoundRect(x, y, w, h, r, color);
   }

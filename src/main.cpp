@@ -91,22 +91,13 @@ struct Rect {
   uint16_t height;
 };
 
-constexpr Rect kTabRects[] = {
-    {0U, 2U, 104U, 28U},
-    {106U, 2U, 104U, 28U},
-    {212U, 2U, 106U, 28U},
-};
-constexpr Rect kUsageRefreshRect = {238U, 36U, 74U, 26U};
 // Content-space Y; add the scroll offset handling at each use site.
 constexpr Rect kSettingsActionRects[] = {
-    {6U, kSettingsActionsY, 96U, 30U},
-    {112U, kSettingsActionsY, 96U, 30U},
-    {218U, kSettingsActionsY, 96U, 30U},
+    {6U, kSettingsActionsY, 308U, 30U},
 };
 constexpr Rect kConnectionActionRects[] = {
-    {6U, 198U, 96U, 30U},
-    {112U, 198U, 96U, 30U},
-    {218U, 198U, 96U, 30U},
+    {6U, 198U, 150U, 30U},
+    {164U, 198U, 150U, 30U},
 };
 
 enum class Tab : uint8_t { Usage = 0, Settings = 1, Connection = 2 };
@@ -133,9 +124,10 @@ uint32_t gLastResetMinute = 0xFFFFFFFFU;
 bool gDisplayOrientationKnown = false;
 bool gAppliedDisplayFlipped = false;
 
-constexpr uint16_t kBackground = 0x0000;
+constexpr uint16_t kBackground = 0x1082;
 constexpr uint16_t kPanel = 0x18E3;
-constexpr uint16_t kPanelSelected = 0x39E7;
+constexpr uint16_t kBarBackground = 0x4208;
+constexpr uint16_t kInactiveTab = 0x4208;
 constexpr uint16_t kAccent = 0x07FF;
 constexpr uint16_t kGood = 0x07E0;
 constexpr uint16_t kCaution = 0xFFE0;
@@ -188,6 +180,31 @@ String resetLine(const usage::Window& window) {
 bool contains(const Rect& rect, uint16_t x, uint16_t y) {
   return x >= rect.x && y >= rect.y && static_cast<uint32_t>(x - rect.x) < rect.width &&
          static_cast<uint32_t>(y - rect.y) < rect.height;
+}
+
+// The Connection tab only shows while unauthenticated. Authenticated tabs
+// are wider (2 tabs), setup tabs are narrower (3 tabs).
+uint8_t tabCount() {
+  return gSnapshot.authenticated ? 2U : 3U;
+}
+
+Rect tabRectAt(uint8_t index) {
+  if (tabCount() == 2U) {
+    return index == 0U ? Rect{0U, 2U, 158U, 28U} : Rect{162U, 2U, 158U, 28U};
+  }
+  if (index == 0U) return Rect{0U, 2U, 104U, 28U};
+  if (index == 1U) return Rect{106U, 2U, 104U, 28U};
+  return Rect{212U, 2U, 106U, 28U};
+}
+
+int tabHitIndex(uint16_t x, uint16_t y) {
+  const uint8_t count = tabCount();
+  for (uint8_t i = 0U; i < count; ++i) {
+    if (contains(tabRectAt(i), x, y)) {
+      return static_cast<int>(i);
+    }
+  }
+  return -1;
 }
 
 template <size_t N>
@@ -312,11 +329,15 @@ bool snapshotDisplayChanged(const usage::Snapshot& before, const usage::Snapshot
          before.displayFlipped != after.displayFlipped;
 }
 
-void drawButton(const Rect& rect, const String& label, bool selected = false) {
-  const uint16_t fill = selected ? kPanelSelected : kPanel;
+void drawButton(const Rect& rect, const String& label, bool selected = false,
+                uint16_t selectedText = kBackground,
+                uint16_t idleFill = kPanel) {
+  const uint16_t fill = selected ? kAccent : idleFill;
+  const uint16_t border = selected ? kAccent : kMuted;
+  const uint16_t text = selected ? selectedText : kText;
   frameTarget().fillRoundRect(rect.x, rect.y, rect.width, rect.height, 4, fill);
   frameTarget().drawRoundRect(rect.x, rect.y, rect.width, rect.height, 4,
-                              selected ? kAccent : kMuted);
+                              border);
   const uint16_t maxWidth = rect.width > 12U ? rect.width - 12U : rect.width;
   const String visible = fitText(label, maxWidth);
   const int32_t textWidth = frameTarget().textWidth(visible);
@@ -324,22 +345,30 @@ void drawButton(const Rect& rect, const String& label, bool selected = false) {
       static_cast<uint16_t>(rect.x + (textWidth < rect.width ? (rect.width - textWidth) / 2 : 0));
   const uint16_t textY =
       static_cast<uint16_t>(rect.y + (rect.height > 16U ? (rect.height - 16U) / 2U : 0U));
-  frameTarget().setTextColor(kText, fill);
+  frameTarget().setTextColor(text, fill);
   frameTarget().drawString(visible, textX, textY);
 }
 
 void drawTabs() {
-  const String labels[] = {String("使用量"), String("設定"), String("接続")};
+  const uint8_t count = tabCount();
   const Tab selected = gTab;
 
-  for (uint8_t i = 0U; i < 3U; ++i) {
-    drawButton(kTabRects[i], labels[i], static_cast<Tab>(i) == selected);
+  for (uint8_t i = 0U; i < count; ++i) {
+    const String label =
+        i == 0U ? String("使用量") : (i == 1U ? String("設定") : String("接続"));
+    drawButton(tabRectAt(i), label, static_cast<Tab>(i) == selected,
+               kBackground, kInactiveTab);
   }
 }
 
 void drawProgress(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
                   const usage::Window& window) {
-  frameTarget().drawRoundRect(x, y, width, height, 4, kMuted);
+  frameTarget().drawRect(x, y, width, height, kText);
+  const uint16_t innerX = x + 1U;
+  const uint16_t innerY = y + 1U;
+  const uint16_t innerW = width > 2U ? width - 2U : 0U;
+  const uint16_t innerH = height > 2U ? height - 2U : 0U;
+  frameTarget().fillRect(innerX, innerY, innerW, innerH, kBarBackground);
   if (!window.available) {
     return;
   }
@@ -351,32 +380,32 @@ void drawProgress(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
     used = 100.0f;
   }
 
-  const uint16_t innerWidth = width > 4U ? width - 4U : 0U;
-  const uint16_t fillWidth = static_cast<uint16_t>(innerWidth * used / 100.0f);
+  const uint16_t fillWidth = static_cast<uint16_t>(innerW * used / 100.0f);
   if (fillWidth > 0U) {
-    frameTarget().fillRoundRect(x + 2U, y + 2U, fillWidth, height - 4U, 3,
-                                usageBarColor(used));
+    frameTarget().fillRect(innerX, innerY, fillWidth, innerH,
+                           usageBarColor(used));
   }
 }
 
 void drawUsage(uint32_t now) {
   frameTarget().setTextColor(kText, kBackground);
   frameTarget().drawString(String("Codex 使用量"), 8U, 38U);
-  drawButton(kUsageRefreshRect, String("更新"));
 
-  frameTarget().setTextColor(kText, kBackground);
-  frameTarget().drawString(String("5時間 使用率"), 10U, 70U);
-  drawProgress(10U, 88U, 300U, 24U, gSnapshot.fiveHour);
-  frameTarget().setTextColor(percentColor(gSnapshot.fiveHour), kBackground);
-  frameTarget().drawString(percentText(gSnapshot.fiveHour), 256U, 70U);
-  drawFittedText(resetLine(gSnapshot.fiveHour), 10U, 114U, 300U, kMuted);
+  frameTarget().fillRoundRect(2U, 62U, 316U, 64U, 3, kPanel);
+  frameTarget().setTextColor(kText, kPanel);
+  frameTarget().drawString(String("5時間 使用率"), 10U, 68U);
+  drawProgress(10U, 86U, 300U, 20U, gSnapshot.fiveHour);
+  frameTarget().setTextColor(percentColor(gSnapshot.fiveHour), kPanel);
+  frameTarget().drawString(percentText(gSnapshot.fiveHour), 256U, 68U);
+  drawFittedText(resetLine(gSnapshot.fiveHour), 10U, 110U, 300U, kMuted, kPanel);
 
-  frameTarget().setTextColor(kText, kBackground);
-  frameTarget().drawString(String("週間 使用率"), 10U, 132U);
-  drawProgress(10U, 150U, 300U, 24U, gSnapshot.weekly);
-  frameTarget().setTextColor(percentColor(gSnapshot.weekly), kBackground);
-  frameTarget().drawString(percentText(gSnapshot.weekly), 256U, 132U);
-  drawFittedText(resetLine(gSnapshot.weekly), 10U, 178U, 300U, kMuted);
+  frameTarget().fillRoundRect(2U, 130U, 316U, 64U, 3, kPanel);
+  frameTarget().setTextColor(kText, kPanel);
+  frameTarget().drawString(String("週間 使用率"), 10U, 136U);
+  drawProgress(10U, 154U, 300U, 20U, gSnapshot.weekly);
+  frameTarget().setTextColor(percentColor(gSnapshot.weekly), kPanel);
+  frameTarget().drawString(percentText(gSnapshot.weekly), 256U, 136U);
+  drawFittedText(resetLine(gSnapshot.weekly), 10U, 178U, 300U, kMuted, kPanel);
 
   String status = visibleStatus(now);
   if (snapshotIsStale(gSnapshot, now)) {
@@ -407,13 +436,13 @@ void drawSettings(uint32_t now) {
     const int16_t y = contentY(centerY);
     // Keep the title and tab zones free from scrolled content.
     if (y < 64 || y > 200) return;
-    frameTarget().drawRoundRect(kSliderX0, static_cast<uint16_t>(y - 2U),
-                                kSliderX1 - kSliderX0, 5U, 2, kMuted);
+    frameTarget().drawRect(kSliderX0, static_cast<uint16_t>(y - 2U),
+                           kSliderX1 - kSliderX0, 5U, kText);
     const uint16_t thumbX = sliderXFromValue(value, minV, maxV);
     const uint16_t fillW = thumbX > kSliderX0 ? thumbX - kSliderX0 : 0U;
     if (fillW > 0U) {
-      frameTarget().fillRoundRect(kSliderX0, static_cast<uint16_t>(y - 2U),
-                                  fillW, 5U, 2, kAccent);
+      frameTarget().fillRect(kSliderX0, static_cast<uint16_t>(y - 2U), fillW,
+                             5U, kAccent);
     }
     frameTarget().fillRect(thumbX > 6U ? thumbX - 6U : 0U,
                            static_cast<uint16_t>(y - 8U), 12U, 17U, kText);
@@ -442,15 +471,13 @@ void drawSettings(uint32_t now) {
                     DisplayState::kPollSliderMaxSec);
   drawContentLine(194, String("0分0時間は常にオン"), kMuted);
   drawContentLine(206, String("下にドラッグでスクロール"), kMuted);
-  for (size_t i = 0U; i < 3U; ++i) {
+  for (size_t i = 0U; i < 1U; ++i) {
     const int16_t y = contentY(kSettingsActionsY);
     if (y < 56 || y > 178) continue;
     const Rect rect = {kSettingsActionRects[i].x, static_cast<uint16_t>(y),
                        kSettingsActionRects[i].width,
                        kSettingsActionRects[i].height};
-    const String labels[] = {String("初期設定"), String("ログイン"),
-                             String("更新")};
-    drawButton(rect, labels[i]);
+    drawButton(rect, String("初期設定"));
   }
   // Scrollbar on the right edge.
   const int32_t trackH = kSettingsScrollBarY1 - kSettingsScrollBarY0;
@@ -501,7 +528,6 @@ void drawConnection(uint32_t now) {
 
   drawButton(kConnectionActionRects[0], String("初期設定"));
   drawButton(kConnectionActionRects[1], String("ログイン"));
-  drawButton(kConnectionActionRects[2], String("更新"));
 }
 
 void drawFrame(uint32_t now) {
@@ -650,24 +676,21 @@ int settingsActionAt(uint16_t x, int32_t contentY) {
       contentY >= static_cast<int32_t>(kSettingsActionsY) + 30) {
     return -1;
   }
-  if (x >= 6U && x < 102U) return 0;
-  if (x >= 112U && x < 208U) return 1;
-  if (x >= 218U && x < 314U) return 2;
+  if (x >= 6U && x < 314U) return 0;
   return -1;
 }
 
 void handleAction(uint16_t x, uint16_t y, uint32_t now) {
-  const int tabIndex = hitIndex(kTabRects, x, y);
+  const int tabIndex = tabHitIndex(x, y);
   if (tabIndex >= 0) {
     gTab = static_cast<Tab>(tabIndex);
+    gDragKind = DragKind::None;
     gDirty = true;
     return;
   }
 
   if (gTab == Tab::Usage) {
-    if (contains(kUsageRefreshRect, x, y)) {
-      sendCommand(usage::CommandType::Refresh);
-    }
+    gDragKind = DragKind::None;
     return;
   }
 
@@ -687,10 +710,6 @@ void handleAction(uint16_t x, uint16_t y, uint32_t now) {
     const int actionIndex = settingsActionAt(x, contentY);
     if (actionIndex == 0) {
       sendCommand(usage::CommandType::Setup);
-    } else if (actionIndex == 1) {
-      sendCommand(usage::CommandType::Login);
-    } else if (actionIndex == 2) {
-      sendCommand(usage::CommandType::Refresh);
     }
     return;
   }
@@ -700,8 +719,6 @@ void handleAction(uint16_t x, uint16_t y, uint32_t now) {
     sendCommand(usage::CommandType::Setup);
   } else if (actionIndex == 1) {
     sendCommand(usage::CommandType::Login);
-  } else if (actionIndex == 2) {
-    sendCommand(usage::CommandType::Refresh);
   }
 }
 
@@ -784,6 +801,13 @@ void updateSnapshot(uint32_t now) {
   const bool changed = snapshotDisplayChanged(gSnapshot, next) || stale != gLastStale;
   gLastStale = stale;
   gSnapshot = next;
+  // The Connection tab only shows while unauthenticated. Return to Usage
+  // when authentication completes while it is open.
+  bool tabHidden = false;
+  if (gSnapshot.authenticated && gTab == Tab::Connection) {
+    gTab = Tab::Usage;
+    tabHidden = true;
+  }
   bool orientationChanged = false;
   if (!gDisplayOrientationKnown || gAppliedDisplayFlipped != gSnapshot.displayFlipped) {
     // TFT_eSPIのrotation 1/3が横長の表裏になる。
@@ -801,7 +825,8 @@ void updateSnapshot(uint32_t now) {
       timeoutChanged = true;
     }
   }
-  if ((changed || timeoutChanged || orientationChanged) && gDisplayState.awake()) {
+  if ((changed || timeoutChanged || orientationChanged || tabHidden) &&
+      gDisplayState.awake()) {
     gDirty = true;
   }
   // 取得残り秒数を毎秒進めるため、取得がなくても秒の変わり目で再描画する。
