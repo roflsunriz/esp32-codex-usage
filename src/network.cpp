@@ -39,10 +39,12 @@ uint32_t retryDelay = 300000;
 bool hadWifi = false;
 std::atomic<uint16_t> disconnectReason{0};
 
-void publish() {
+void publish(uint32_t now) {
   current.authenticated = !tokens.refresh.isEmpty();
   current.connected = WiFi.status() == WL_CONNECTED;
   current.timeoutMs = settings.timeoutMs;
+  current.pollIntervalMs = settings.pollIntervalSec * 1000U;
+  current.nextPollMs = requestRefresh ? now : lastAttempt + retryDelay;
   current.displayFlipped = settings.displayFlipped;
   current.wifiDisconnectReason = disconnectReason.load();
 #ifdef USAGE_DIAGNOSTICS
@@ -121,6 +123,7 @@ void configureServer() {
     document["status"] = current.status;
     document["deviceCode"] = current.deviceCode;
     document["timeoutMs"] = settings.timeoutMs;
+    document["pollIntervalSec"] = settings.pollIntervalSec;
     document["displayFlipped"] = settings.displayFlipped;
     String body;
     serializeJson(document, body);
@@ -244,6 +247,9 @@ bool refreshTokens() {
 void updateUsage() {
   lastAttempt = millis();
   requestRefresh = false;
+  current.fetching = true;
+  current.status = "更新中";
+  publish(millis());
   bool okay = true;
   if (tokens.expiresAt <= static_cast<int64_t>(time(nullptr)) + 120) okay = refreshTokens();
   Reading reading;
@@ -259,12 +265,13 @@ void updateUsage() {
     current.weekly = reading.weekly;
     current.updatedAt = millis();
     current.status = "更新済み";
-    retryDelay = 300000;
+    retryDelay = settings.pollIntervalSec * 1000U;
   } else {
     if (!client.error.isEmpty()) current.status = client.error;
     retryDelay = std::min<uint32_t>(retryDelay * 2U, 900000U);
   }
-  publish();
+  current.fetching = false;
+  publish(millis());
 }
 
 void processCommand(const Command& command) {
@@ -297,6 +304,17 @@ void processCommand(const Command& command) {
         current.status = "消灯設定を保存できません";
       break;
     }
+    case CommandType::PollInterval: {
+      if (!DisplayState::isValidPollSliderSec(command.value)) break;
+      Settings next = settings;
+      next.pollIntervalSec = command.value;
+      if (storageReady && store.saveSettings(next)) {
+        settings = next;
+        retryDelay = settings.pollIntervalSec * 1000U;
+      } else
+        current.status = "取得間隔を保存できません";
+      break;
+    }
     case CommandType::FlipDisplay: {
       Settings next = settings;
       next.displayFlipped = !next.displayFlipped;
@@ -317,6 +335,7 @@ void networkTask(void*) {
     current.status = "保存データを修復しました。設定を確認";
   else
     current.status = settings.ssid.isEmpty() ? "接続タブから初期設定" : "Wi-Fi接続中";
+  retryDelay = settings.pollIntervalSec * 1000U;
   WiFi.persistent(false);
   WiFi.onEvent(
       [](arduino_event_id_t, arduino_event_info_t info) {
@@ -332,7 +351,7 @@ void networkTask(void*) {
     WiFi.begin(settings.ssid.c_str(), settings.password.c_str());
   }
   configTime(0, 0, "time.cloudflare.com", "pool.ntp.org");
-  publish();
+  publish(millis());
   for (;;) {
     const uint32_t now = millis();
     Command command;
@@ -377,7 +396,7 @@ void networkTask(void*) {
           lastPoll = millis();
         } else
           current.status = client.error;
-        publish();
+        publish(millis());
       }
       if (clockReady && loginPending &&
           static_cast<uint32_t>(millis() - lastPoll) >= login.intervalMs) {
@@ -402,7 +421,7 @@ void networkTask(void*) {
           (requestRefresh || static_cast<uint32_t>(now - lastAttempt) >= retryDelay))
         updateUsage();
     }
-    publish();
+    publish(millis());
     vTaskDelay(pdMS_TO_TICKS(20));
   }
 }

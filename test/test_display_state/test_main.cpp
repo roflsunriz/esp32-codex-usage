@@ -19,7 +19,7 @@ uint32_t add(uint32_t value, uint32_t delta) { return static_cast<uint32_t>(valu
 void setUp() {}
 void tearDown() {}
 
-void test_default_timeout_and_all_options_are_accepted() {
+void test_default_timeout_and_legacy_options_are_accepted() {
   DisplayState state(123U);
 
   TEST_ASSERT_TRUE(state.awake());
@@ -29,27 +29,47 @@ void test_default_timeout_and_all_options_are_accepted() {
     TEST_ASSERT_TRUE(state.setTimeout(kTimeoutOptions[i], 456U));
     TEST_ASSERT_EQUAL_UINT32(kTimeoutOptions[i], state.timeout());
   }
+
+  // New slider range: 0 (always on) through 24h59m in any millisecond value.
+  TEST_ASSERT_TRUE(state.setTimeout(0U, 456U));
+  TEST_ASSERT_TRUE(state.setTimeout(150000U, 456U));
+  TEST_ASSERT_TRUE(state.setTimeout(89940000U, 456U));
+  TEST_ASSERT_FALSE(state.setTimeout(89940001U, 456U));
+  TEST_ASSERT_FALSE(state.setTimeout(0xFFFFFFFFU, 456U));
 }
 
-void test_values_adjacent_to_every_option_are_rejected() {
+void test_zero_timeout_never_sleeps() {
   DisplayState state(0U);
+  TEST_ASSERT_TRUE(state.setTimeout(0U, 0U));
+  state.tick(0xFFFFFFFFU);
+  TEST_ASSERT_TRUE(state.awake());
+}
 
-  for (size_t i = 0; i < kTimeoutOptionCount; ++i) {
-    const uint32_t option = kTimeoutOptions[i];
-    TEST_ASSERT_FALSE(state.setTimeout(option - 1U, 999U));
-    TEST_ASSERT_FALSE(state.setTimeout(option + 1U, 999U));
-  }
-
-  TEST_ASSERT_FALSE(state.setTimeout(0U, 999U));
-  TEST_ASSERT_FALSE(state.setTimeout(0xFFFFFFFFU, 999U));
-  TEST_ASSERT_EQUAL_UINT32(60000U, state.timeout());
+void test_sleep_parts_round_trip() {
+  TEST_ASSERT_EQUAL_UINT32(0U, DisplayState::sleepTimeoutFromParts(0U, 0U));
+  TEST_ASSERT_EQUAL_UINT32(60000U, DisplayState::sleepTimeoutFromParts(1U, 0U));
+  TEST_ASSERT_EQUAL_UINT32(3600000U,
+                           DisplayState::sleepTimeoutFromParts(0U, 1U));
+  TEST_ASSERT_EQUAL_UINT32(89940000U,
+                           DisplayState::sleepTimeoutFromParts(59U, 24U));
+  TEST_ASSERT_EQUAL_UINT32(89940000U,
+                           DisplayState::sleepTimeoutFromParts(99U, 99U));
+  TEST_ASSERT_EQUAL_UINT32(0U, DisplayState::sleepMinutesPart(7200000U));
+  TEST_ASSERT_EQUAL_UINT32(2U, DisplayState::sleepHoursPart(7200000U));
+  TEST_ASSERT_EQUAL_UINT32(59U, DisplayState::sleepMinutesPart(89940000U));
+  TEST_ASSERT_EQUAL_UINT32(24U, DisplayState::sleepHoursPart(89940000U));
+  TEST_ASSERT_TRUE(DisplayState::isValidPollSliderSec(60U));
+  TEST_ASSERT_TRUE(DisplayState::isValidPollSliderSec(600U));
+  TEST_ASSERT_FALSE(DisplayState::isValidPollSliderSec(59U));
+  TEST_ASSERT_FALSE(DisplayState::isValidPollSliderSec(61U));
+  TEST_ASSERT_FALSE(DisplayState::isValidPollSliderSec(601U));
 }
 
 void test_invalid_timeout_does_not_reset_activity_deadline() {
   DisplayState state(100U);
 
   TEST_ASSERT_TRUE(state.setTimeout(15000U, 100U));
-  TEST_ASSERT_FALSE(state.setTimeout(1U, 0xFFFFFFFFU));
+  TEST_ASSERT_FALSE(state.setTimeout(89940001U, 0xFFFFFFFFU));
 
   state.tick(add(100U, 14999U));
   TEST_ASSERT_TRUE(state.awake());
@@ -150,8 +170,9 @@ void test_wake_is_wrap_safe_and_consumes_held_touch() {
 
 int main() {
   UNITY_BEGIN();
-  RUN_TEST(test_default_timeout_and_all_options_are_accepted);
-  RUN_TEST(test_values_adjacent_to_every_option_are_rejected);
+  RUN_TEST(test_default_timeout_and_legacy_options_are_accepted);
+  RUN_TEST(test_zero_timeout_never_sleeps);
+  RUN_TEST(test_sleep_parts_round_trip);
   RUN_TEST(test_invalid_timeout_does_not_reset_activity_deadline);
   RUN_TEST(test_timeout_boundary_is_wrap_safe);
   RUN_TEST(test_touch_returns_only_new_actionable_presses);

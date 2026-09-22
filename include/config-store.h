@@ -7,6 +7,7 @@ struct Settings {
   String ssid;
   String password;
   uint32_t timeoutMs = 60000;
+  uint32_t pollIntervalSec = 300;
   bool displayFlipped = false;
 };
 struct Tokens {

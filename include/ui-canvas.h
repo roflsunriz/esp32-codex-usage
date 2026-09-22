@@ -13,6 +13,9 @@ class UiCanvas {
   void setTextSize(uint8_t) {}
   void setTextWrap(bool, bool) {}
   void fillScreen(uint16_t color) { display_diff::clearFrame(*target_, color); }
+  void fillRect(int x, int y, int w, int h, uint16_t color) {
+    target_->fillRect(x, y, w, h, color);
+  }
   void fillRoundRect(int x, int y, int w, int h, int r, uint16_t color) {
     target_->fillRoundRect(x, y, w, h, r, color);
   }

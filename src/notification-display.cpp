@@ -118,6 +118,20 @@ bool CodexUsageDisplay::getTouch(uint16_t* x, uint16_t* y) {
   return true;
 }
 
+bool CodexUsageDisplay::getDragPoint(uint16_t* x, uint16_t* y) {
+  if (!touch_.tirqTouched()) return false;
+  const SensitiveTouchPoint point = touch_.getPoint();
+  if (point.z < calibration_.pressure) return false;
+  int16_t mappedX = mapAxis(point.x, calibration_.left, calibration_.right,
+                            24, 295, 319);
+  int16_t mappedY = mapAxis(point.y, calibration_.top, calibration_.bottom,
+                            24, 215, 239);
+  if (getRotation() == 3) { mappedX = 319 - mappedX; mappedY = 239 - mappedY; }
+  if (x) *x = static_cast<uint16_t>(mappedX);
+  if (y) *y = static_cast<uint16_t>(mappedY);
+  return true;
+}
+
 bool CodexUsageDisplay::capturePoint(int16_t& x, int16_t& y, int16_t& pressure) {
   const uint32_t start = millis();
   while (static_cast<uint32_t>(millis() - start) < 15000) {

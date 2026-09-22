@@ -10,6 +10,8 @@ class CodexUsageDisplay : public TFT_eSPI {
   CodexUsageDisplay();
   void beginTouch();
   bool getTouch(uint16_t* x, uint16_t* y);
+  // Contact-continuation position without the one-shot latch, for drags.
+  bool getDragPoint(uint16_t* x, uint16_t* y);
   void calibrateTouch();
   void setBrightness(uint8_t value);
   uint8_t getBrightness() const { return brightness_; }

@@ -3,9 +3,39 @@
 
 #include <stdint.h>
 
-// UI の表示状態だけを扱う、表示ドライバ非依存の状態機械。
+// UI の表示状態だけを扱う、表示ドライバ非依存の状態機械。0 の指定は
+// 自動消灯オフ（常時点灯）と同じで、期限切れにならない。
 class DisplayState {
  public:
+  // 新しい自動消灯メニューのスライダー範囲：0〜59分＋0〜24時間。
+  // 合計は 時*3600＋分*60（ミリ秒換算）で、0分0時間は常時点灯になる。
+  // 取得間隔スライダーは60〜600秒の60秒刻み。
+  static constexpr uint32_t kSleepMinutesMax = 59U;
+  static constexpr uint32_t kSleepHoursMax = 24U;
+  static constexpr uint32_t kSleepTimeoutMaxMs =
+      (24U * 3600U + 59U * 60U) * 1000U;
+  static constexpr uint32_t kPollSliderMinSec = 60U;
+  static constexpr uint32_t kPollSliderMaxSec = 600U;
+  static constexpr uint32_t kPollSliderStepSec = 60U;
+
+  static uint32_t sleepMinutesPart(uint32_t timeoutMs) {
+    return (timeoutMs % 3600000U) / 60000U;
+  }
+
+  static uint32_t sleepHoursPart(uint32_t timeoutMs) {
+    return timeoutMs / 3600000U;
+  }
+
+  static uint32_t sleepTimeoutFromParts(uint32_t minutes, uint32_t hours) {
+    if (minutes > kSleepMinutesMax) minutes = kSleepMinutesMax;
+    if (hours > kSleepHoursMax) hours = kSleepHoursMax;
+    return (hours * 3600U + minutes * 60U) * 1000U;
+  }
+
+  static bool isValidPollSliderSec(uint32_t pollSec) {
+    return pollSec >= kPollSliderMinSec && pollSec <= kPollSliderMaxSec &&
+           pollSec % kPollSliderStepSec == 0U;
+  }
   // 起動時は表示中とし、既定の自動消灯時間を 1 分にする。
   explicit DisplayState(uint32_t now = 0U)
       : timeout_ms_(60000U),
@@ -17,7 +47,8 @@ class DisplayState {
   // now は millis() などの uint32_t タイマー値を渡す。差分計算は
   // unsigned のラップアラウンドを利用するため、タイマー巻き戻り後も動作する。
   void tick(uint32_t now) {
-    if (!awake_ || static_cast<uint32_t>(now - last_activity_ms_) < timeout_ms_) {
+    if (!awake_ || timeout_ms_ == 0U ||
+        static_cast<uint32_t>(now - last_activity_ms_) < timeout_ms_) {
       return;
     }
 
@@ -81,21 +112,10 @@ class DisplayState {
   bool awake() const { return awake_; }
 
  private:
+  // 0（常時点灯）から89940000（24時間59分）までの整数を受け付ける。
+  // 旧9択の値はすべて範囲内のため、保存済み設定はそのまま有効である。
   static bool isValidTimeout(uint32_t timeout_ms) {
-    switch (timeout_ms) {
-      case 15000U:
-      case 30000U:
-      case 60000U:
-      case 120000U:
-      case 300000U:
-      case 600000U:
-      case 1800000U:
-      case 3600000U:
-      case 7200000U:
-        return true;
-      default:
-        return false;
-    }
+    return timeout_ms <= kSleepTimeoutMaxMs;
   }
 
   uint32_t timeout_ms_;

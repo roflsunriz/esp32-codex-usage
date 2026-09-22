@@ -17,6 +17,10 @@ struct Snapshot {
   bool setupActive = false;
   uint32_t updatedAt = 0;
   uint32_t timeoutMs = 60000;
+  uint32_t pollIntervalMs = 300000;
+  // Absolute millis() of the next scheduled usage fetch. 0 while unknown.
+  uint32_t nextPollMs = 0;
+  bool fetching = false;
   bool displayFlipped = false;
   uint16_t wifiDisconnectReason = 0;
 #ifdef USAGE_DIAGNOSTICS
@@ -25,7 +29,7 @@ struct Snapshot {
 #endif
 };
 enum class CommandType {
-  Refresh, Login, Setup, Timeout, FlipDisplay,
+  Refresh, Login, Setup, Timeout, FlipDisplay, PollInterval,
 #ifdef USAGE_DIAGNOSTICS
   RefreshToken,
 #endif

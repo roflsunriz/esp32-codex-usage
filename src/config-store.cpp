@@ -34,15 +34,24 @@ bool ConfigStore::load(Settings& settings, Tokens& tokens) {
       next.ssid = document["ssid"].as<String>();
       next.password = document["password"].as<String>();
       next.timeoutMs = document["timeout"].as<uint32_t>();
+      // Records saved before the poll slider have no pollSec and keep the
+      // previous 5-minute cadence.
+      next.pollIntervalSec =
+          document["pollSec"].is<uint32_t>()
+              ? document["pollSec"].as<uint32_t>()
+              : 300U;
       next.displayFlipped = version == 1 ? false : document["flipped"].as<bool>();
       DisplayState state;
       okay = document["ssid"].is<const char*>() && document["password"].is<const char*>() &&
              next.ssid.length() <= 32 && next.password.length() <= 64 &&
              state.setTimeout(next.timeoutMs, 0) &&
+             DisplayState::isValidPollSliderSec(next.pollIntervalSec) &&
              (version == 1 || document["flipped"].is<bool>());
       if (okay) {
         settings = next;
-        if (version == 1 && !saveSettings(next)) valid = false;
+        if ((version == 1 || !document["pollSec"].is<uint32_t>()) &&
+            !saveSettings(next))
+          valid = false;
       }
     } else if (okay) {
       Tokens next;
@@ -69,6 +78,7 @@ bool ConfigStore::saveSettings(const Settings& settings) {
   document["ssid"] = settings.ssid;
   document["password"] = settings.password;
   document["timeout"] = settings.timeoutMs;
+  document["pollSec"] = settings.pollIntervalSec;
   document["flipped"] = settings.displayFlipped;
   String value;
   serializeJson(document, value);
