@@ -41,13 +41,13 @@ constexpr uint8_t kBootPin = 0U;
 // so all touch targets must live inside that field.
 constexpr uint16_t kSliderX0 = 24U;
 constexpr uint16_t kSliderX1 = 275U;
-constexpr uint16_t kSliderMinutesY = 112U;
-constexpr uint16_t kSliderHoursY = 148U;
-constexpr uint16_t kSliderPollY = 184U;
+constexpr uint16_t kSliderMinutesY = 120U;
+constexpr uint16_t kSliderHoursY = 160U;
+constexpr uint16_t kSliderPollY = 200U;
 constexpr uint16_t kSliderHalfH = 14U;
 // Settings content below the fixed title (y38). The action row at the
 // content bottom scrolls with the sliders; the scrollbar stays fixed.
-constexpr int32_t kSettingsContentH = 250;
+constexpr int32_t kSettingsContentH = 264;
 constexpr int32_t kSettingsVisibleTop = 38;
 constexpr int32_t kSettingsVisibleBottom = 208;
 constexpr int32_t kSettingsScrollMax =
@@ -56,7 +56,8 @@ constexpr uint16_t kSettingsScrollBarX0 = 283U;
 constexpr uint16_t kSettingsScrollBarY0 = 44;
 constexpr uint16_t kSettingsScrollBarY1 = 204;
 constexpr int32_t kSettingsScrollPage = 40;
-constexpr uint16_t kSettingsActionsY = 214U;
+constexpr uint16_t kSettingsActionsY = 228U;
+constexpr uint16_t kSettingsActionW = 268U;
 
 uint32_t sliderValueFromX(uint16_t x, uint32_t minV, uint32_t maxV,
                           uint32_t step) {
@@ -95,7 +96,7 @@ struct Rect {
 
 // Content-space Y; add the scroll offset handling at each use site.
 constexpr Rect kSettingsActionRects[] = {
-    {6U, kSettingsActionsY, 308U, 30U},
+    {6U, kSettingsActionsY, kSettingsActionW, 30U},
 };
 constexpr Rect kConnectionActionRects[] = {
     {6U, 198U, 150U, 30U},
@@ -453,25 +454,25 @@ void drawSettings(uint32_t now) {
   };
 
   if (timeoutMs == 0U) {
-    drawContentLine(72, String("消灯: 常にオン"));
+    drawContentLine(74, String("消灯: 常にオン"));
   } else {
-    drawContentLine(72, String("消灯: ") + String(hours) + String("時間") +
+    drawContentLine(74, String("消灯: ") + String(hours) + String("時間") +
                            String(minutes) + String("分"));
   }
-  drawContentLine(90, String("分 0-59: ") + String(minutes) + String("分"),
+  drawContentLine(94, String("分 0-59: ") + String(minutes) + String("分"),
                   kMuted);
   drawContentSlider(kSliderMinutesY, minutes, 0U,
                     DisplayState::kSleepMinutesMax);
-  drawContentLine(126, String("時間 0-24: ") + String(hours) + String("時間"),
+  drawContentLine(134, String("時間 0-24: ") + String(hours) + String("時間"),
                   kMuted);
   drawContentSlider(kSliderHoursY, hours, 0U, DisplayState::kSleepHoursMax);
-  drawContentLine(162, String("取得期間 60-600秒: ") + String(pollSec) +
+  drawContentLine(174, String("取得期間 60-600秒: ") + String(pollSec) +
                            String("秒"),
                   kMuted);
   drawContentSlider(kSliderPollY, pollSec,
                     DisplayState::kPollSliderMinSec,
                     DisplayState::kPollSliderMaxSec);
-  drawContentLine(200, String("0分0時間は常にオン"), kMuted);
+  drawContentLine(210, String("0分0時間は常にオン"), kMuted);
   for (size_t i = 0U; i < 1U; ++i) {
     const int16_t y = contentY(kSettingsActionsY);
     if (y < 56 || y > 178) continue;
@@ -677,7 +678,7 @@ int settingsActionAt(uint16_t x, int32_t contentY) {
       contentY >= static_cast<int32_t>(kSettingsActionsY) + 30) {
     return -1;
   }
-  if (x >= 6U && x < 314U) return 0;
+  if (x >= 6U && x < 6U + kSettingsActionW) return 0;
   return -1;
 }
 
