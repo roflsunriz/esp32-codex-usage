@@ -89,3 +89,5 @@ python scripts/flash-backup.py restore `
 `.github/dependabot.yml` の pip／GitHub Actions 更新は毎週確認されます。patch／minor PR は `.github/workflows/ci.yml` の `CI` が成功した場合に自動で squash merge されます。失敗時は failed jobs が 1 回再実行され、再失敗や major 更新は PR を残します。手動修正では `requirements-dev.txt` 等の固定値と `verification.md` の検証手順を確認してください。
 
 自動処理を変更するときは、`.github/workflows/dependabot-automation.yml` の呼び出し先 SHA と `CI` の表示名を実際のワークフローに合わせ、`actionlint` と PR の実行結果で確認します。問題があれば呼び出し先を直前の検証済み SHA に戻すコミットを push し、誤って取り込んだ依存更新は通常の revert コミットで戻します。
+
+CI 完了より Dependabot の分類が遅れる場合は、`callback_workflow_file` が指す呼び出し側 workflow を `workflow_dispatch` し、同じ PR 番号・head SHA・全チェックを再確認する。呼び出し側のファイル名を変える際はこの入力も一緒に更新する。
