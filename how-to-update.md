@@ -83,3 +83,9 @@ python scripts/flash-backup.py restore `
 ## 5. ロールバック時の扱い
 
 書き込み途中で接続が切れた場合は、USBシリアルモニターを閉じ、同じポートと検証済みバックアップで復元を一度だけ再試行します。復元後も起動しない場合は、エラー全文、バックアップメタデータ、esptoolバージョンだけを保全し、フラッシュ内容や認証情報を共有しません。
+
+## Dependabot PR の更新
+
+`.github/dependabot.yml` の pip／GitHub Actions 更新は毎週確認されます。patch／minor PR は `.github/workflows/ci.yml` の `CI` が成功した場合に自動で squash merge されます。失敗時は failed jobs が 1 回再実行され、再失敗や major 更新は PR を残します。手動修正では `requirements-dev.txt` 等の固定値と `verification.md` の検証手順を確認してください。
+
+自動処理を変更するときは、`.github/workflows/dependabot-automation.yml` の呼び出し先 SHA と `CI` の表示名を実際のワークフローに合わせ、`actionlint` と PR の実行結果で確認します。問題があれば呼び出し先を直前の検証済み SHA に戻すコミットを push し、誤って取り込んだ依存更新は通常の revert コミットで戻します。

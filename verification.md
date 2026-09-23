@@ -1,5 +1,11 @@
 # 検証手順と結果
 
+## Dependabot 自動処理（2026-09-23）
+
+- `.github/workflows/dependabot-automation.yml` は `actionlint` で構文を確認する。
+- `CI` の PR 実行が成功し、Dependabot メタデータが patch／minor を示す場合だけ自動マージされる。CI 初回失敗は failed jobs を 1 回再実行し、再失敗・major・古い head SHA は PR を残す。
+- ワークフロー追加時点で対象となる開いた Dependabot PR がなければ、実 PR のマージ経路は未検証として扱う。
+
 ## v0.4.0実機更新とリリース（2026-09-23、実機確認済み）
 
 `main` とタグ `v0.4.0` をプッシュし、CI成功後にリリースワークフロー成功と公開アセットを確認した。公開ノートがCHANGELOGの0.4.0節と一致し、`firmware.bin` のESP32 magicを確認した。

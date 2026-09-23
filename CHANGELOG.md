@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 依存更新の確認負担を減らすため、Dependabot の patch／minor PR を既存 CI の成功後に自動取り込みし、CI 失敗時には失敗ジョブを 1 回再実行する設定を追加した。
+
 ## [0.4.0] - 2026-09-23
 
 ### Added

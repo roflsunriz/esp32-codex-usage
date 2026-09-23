@@ -76,6 +76,8 @@ PlatformIOのキャッシュは `platformio.ini` の `core_dir = .local/platform
 
 ## ドキュメント
 
+依存更新の PR は `.github/dependabot.yml` で毎週作成します。Dependabot の patch／minor 更新は PR 用 CI が成功すると自動で squash merge され、失敗した CI ジョブは 1 回だけ再実行されます。major 更新と再失敗した PR は手動で確認します。自動処理の呼び出し設定は `.github/workflows/dependabot-automation.yml` にあります。
+
 - [更新・復旧手順](how-to-update.md)
 - [検証手順と結果](verification.md)
 - [設計](docs/design.md)
