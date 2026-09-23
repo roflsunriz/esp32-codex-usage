@@ -5,6 +5,7 @@
 - `.github/workflows/dependabot-automation.yml` は `actionlint` で構文を確認する。
 - `CI` の PR 実行が成功し、Dependabot メタデータが patch／minor を示す場合だけ自動マージされる。CI 初回失敗は failed jobs を 1 回再実行し、再失敗・major・古い head SHA は PR を残す。
 - ワークフロー追加時点で対象となる開いた Dependabot PR がなければ、実 PR のマージ経路は未検証として扱う。
+- CI 完了より分類が遅れる場合は、分類後の `workflow_dispatch` が現在の PR 番号と head SHA を照合して再評価する。別の作成者、古い SHA、未完了の CI はマージしない。
 
 ## v0.4.0実機更新とリリース（2026-09-23、実機確認済み）
 
@@ -131,5 +132,3 @@ SHA-256: 023e3f264c912109865df92fa2949571f854692124c0014a58f2848f82a3d132
 ## 依存関係の確認
 
 Espressifの公開アドバイザリを確認し、WebServerの入力長・ヘッダー検証修正を含むArduino 3.3.11を採用しました。導入済みソースでも修正を確認しています。開発ツールはPlatformIO 6.2.0とStarlette 1.6.0へ更新し、専用venvの43パッケージへのOSV照会は該当なしでした。ArduinoJsonとLovyanGFXのリポジトリ公開アドバイザリにも該当報告はありませんでした。未報告の問題がないことを保証するものではありません。
-
-大量の Dependabot PR により CI 完了より分類が遅れる場合でも、分類後の `workflow_dispatch` が現在の PR 番号と head SHA を照合して再評価する。別の作成者、古い SHA、未完了の CI はマージしない。
