@@ -10,6 +10,7 @@
 #include "display-state.h"
 #include "reset-format.h"
 #include "ui-canvas.h"
+#include "ui-tabs.h"
 
 namespace {
 
@@ -185,10 +186,12 @@ bool contains(const Rect& rect, uint16_t x, uint16_t y) {
          static_cast<uint32_t>(y - rect.y) < rect.height;
 }
 
-// The Connection tab only shows while unauthenticated. Authenticated tabs
-// are wider (2 tabs), setup tabs are narrower (3 tabs).
+// The Connection tab shows while unauthenticated or while a device code is
+// pending (including re-login). Only authenticated-without-code gets the
+// wider 2 tabs.
 uint8_t tabCount() {
-  return gSnapshot.authenticated ? 2U : 3U;
+  return ui_tabs::tabCount(gSnapshot.authenticated,
+                           gSnapshot.deviceCode.length() != 0U);
 }
 
 Rect tabRectAt(uint8_t index) {
@@ -302,6 +305,10 @@ String visibleStatus(uint32_t now) {
     return String("描画用メモリ不足。再起動してください");
   }
   String status = localNoticeActive(now) ? gLocalNotice : gSnapshot.status;
+  if (!ui_tabs::shouldShowCountdown(gSnapshot.fetching, gSnapshot.nextPollMs,
+                                    gSnapshot.deviceCode.length() != 0U)) {
+    return status;
+  }
   const int32_t countdown = pollCountdownSec(gSnapshot, now);
   if (countdown != INT32_MIN) {
     status += String(" あと") + String(countdown) + String("秒");
@@ -803,10 +810,13 @@ void updateSnapshot(uint32_t now) {
   const bool changed = snapshotDisplayChanged(gSnapshot, next) || stale != gLastStale;
   gLastStale = stale;
   gSnapshot = next;
-  // The Connection tab only shows while unauthenticated. Return to Usage
-  // when authentication completes while it is open.
+  // The Connection tab only shows while unauthenticated or while a device
+  // code is pending. Return to Usage when authentication completes while
+  // it is open, but stay while the code is still pending.
   bool tabHidden = false;
-  if (gSnapshot.authenticated && gTab == Tab::Connection) {
+  if (ui_tabs::shouldReturnToUsage(gSnapshot.authenticated,
+                                   gSnapshot.deviceCode.length() != 0U,
+                                   static_cast<uint8_t>(gTab))) {
     gTab = Tab::Usage;
     tabHidden = true;
   }
