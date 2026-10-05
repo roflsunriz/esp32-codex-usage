@@ -1,5 +1,10 @@
-title: "[q&a] "
+title: '[質問] '
 body:
+  - type: markdown
+    attributes:
+      value: |-
+        esp32-codex-usageに関する内容を、目的と確認できた事実に分けて記載してください。
+        Cookie、認証トークン、パスワード、個人情報を本文や添付に含めないでください。認証コード、Wi-Fi認証情報、NVS・全フラッシュのダンプ、個人設定入りファームウェアも添付しないでください。
   - type: markdown
     attributes:
       value: 認証情報や秘密情報を含むログは記載しないでください。
@@ -12,9 +17,23 @@ body:
   - type: textarea
     id: environment
     attributes:
-      label: 環境
+      label: 対象と環境
       description: ボード、OS、PlatformIOと依存ライブラリのバージョンを記載してください。
   - type: textarea
     id: attempted
     attributes:
-      label: 試したこと
+      label: 試したことと結果
+  - type: textarea
+    id: additional-common
+    attributes:
+      label: 補足
+      description: 関連資料と、確認できなかった条件を記載してください。
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 公開情報の確認
+      options:
+        - label: 本文と添付に秘密情報や個人情報が含まれていないことを確認しました。
+          required: true

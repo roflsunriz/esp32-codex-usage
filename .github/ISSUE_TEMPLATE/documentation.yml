@@ -1,38 +1,47 @@
-title: '[Feature] '
+name: 文書の改善
+description: README、更新手順、検証手順などの誤りを報告する
+title: '[Docs] '
+labels:
+  - documentation
 body:
   - type: markdown
     attributes:
       value: |-
         esp32-codex-usageに関する内容を、目的と確認できた事実に分けて記載してください。
         Cookie、認証トークン、パスワード、個人情報を本文や添付に含めないでください。認証コード、Wi-Fi認証情報、NVS・全フラッシュのダンプ、個人設定入りファームウェアも添付しないでください。
+        投稿前に[README](https://github.com/roflsunriz/esp32-codex-usage/blob/main/README.md)と[既存Issue](https://github.com/roflsunriz/esp32-codex-usage/issues)を確認してください。
+        脆弱性の報告は[SECURITY.md](https://github.com/roflsunriz/esp32-codex-usage/blob/main/SECURITY.md)の案内に従ってください。
   - type: textarea
-    id: problem
+    id: legacy-1
     attributes:
-      label: 解決したい問題
+      label: 対象文書
+      description: 'ファイル名またはURL:'
     validations:
-      required: true
+      required: false
   - type: textarea
-    id: proposal
+    id: legacy-2
     attributes:
-      label: 提案と画面・操作の案
+      label: 現在の記載と問題
     validations:
-      required: true
+      required: false
   - type: textarea
-    id: tradeoffs
+    id: legacy-3
     attributes:
-      label: 代替案と互換性
+      label: 期待する記載
+    validations:
+      required: false
   - type: textarea
-    id: proposal-common
+    id: legacy-4
     attributes:
-      label: 提案する変更
-      description: 実現したい動作や表示を記載してください。
+      label: 根拠・検証
+      description: 外部仕様は公式資料へのリンクを記載してください。
     validations:
       required: false
   - type: textarea
     id: additional-common
     attributes:
       label: 補足
-      description: 参考資料、画面案、受け入れ条件などを記載してください。
+      description: 根拠となる資料や、試した環境と結果を記載してください。
     validations:
       required: false
   - type: checkboxes

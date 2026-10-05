@@ -1,0 +1,57 @@
+name: 設定・環境の相談
+description: Wi-Fi、PlatformIO、ボード設定などの相談をする
+title: '[Config] '
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |-
+        esp32-codex-usageに関する内容を、目的と確認できた事実に分けて記載してください。
+        Cookie、認証トークン、パスワード、個人情報を本文や添付に含めないでください。認証コード、Wi-Fi認証情報、NVS・全フラッシュのダンプ、個人設定入りファームウェアも添付しないでください。
+        投稿前に[README](https://github.com/roflsunriz/esp32-codex-usage/blob/main/README.md)と[既存Issue](https://github.com/roflsunriz/esp32-codex-usage/issues)を確認してください。
+        脆弱性の報告は[SECURITY.md](https://github.com/roflsunriz/esp32-codex-usage/blob/main/SECURITY.md)の案内に従ってください。
+  - type: textarea
+    id: legacy-1
+    attributes:
+      label: 達成したい目的と相談内容
+    validations:
+      required: false
+  - type: textarea
+    id: legacy-2
+    attributes:
+      label: 対象と環境
+      description: |-
+        - ESP32-2432S028Rの型番・表示コントローラ:
+        - OS:
+        - Python / PlatformIO:
+        - Wi-Fi環境（2.4 GHzのみか）:
+    validations:
+      required: false
+  - type: textarea
+    id: legacy-3
+    attributes:
+      label: 試したことと結果
+    validations:
+      required: false
+  - type: textarea
+    id: legacy-4
+    attributes:
+      label: エラー
+      description: 秘密情報を除いたメッセージだけを記載してください。認証トークンやWi-Fiパスワードは共有しないでください。
+    validations:
+      required: false
+  - type: textarea
+    id: additional-common
+    attributes:
+      label: 補足
+      description: 関連資料と、確認できなかった条件を記載してください。
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 公開情報の確認
+      options:
+        - label: 本文と添付に秘密情報や個人情報が含まれていないことを確認しました。
+          required: true
