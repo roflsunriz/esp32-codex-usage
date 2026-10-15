@@ -33,7 +33,8 @@ PlatformIO platformはpioarduino 55.03.311、Arduino coreは3.3.11、ESP-IDFは5
 
 コミットメッセージは日本語Conventional Commits形式（例: `feat: 使用量タブを追加`）にします。ブランチ作成や公開操作は依頼範囲を確認してから行います。
 
-
 ## 報告・提案の受付
 
 [Issueの受付](https://github.com/roflsunriz/esp32-codex-usage/issues/new/choose)から用途に合うフォームを選び、目的、対象と環境、確認できた結果を記載してください。Pull Requestには変更後の挙動、検証結果、未検証条件、互換性への影響を記載します。受付と秘密情報の扱いは[SUPPORT.md](SUPPORT.md)を参照してください。
+
+作業開始前に [findings.md](findings.md) を全文読み、プロジェクト固有の構成・環境・調査知見も確認してください。

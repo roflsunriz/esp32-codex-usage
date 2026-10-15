@@ -39,36 +39,11 @@ LCDは横向き320×240です。使用量と設定の2タブを表示し、未�
 
 ## ビルドプロファイル
 
-通常の出荷用ビルドは `cyd` です。
-
-```powershell
-$env:PYTHONUTF8 = "1"
-pio run -e cyd
-```
-
-`cyd-diagnostics` は合成タッチ、仮想時刻、画面状態取得を行う診断専用プロファイルです。USBシリアル操作を含むため配布しません。
-
-ネイティブテストは次で実行します。
-
-```powershell
-$env:PYTHONUTF8 = "1"
-python scripts/test-native.py
-```
-
-検証件数、実機で確認した範囲、初回認証に残る確認事項は [verification.md](verification.md) にまとめています。初期設定Web画面は、Node.js 22以降とGoogle Chromeを導入した環境で `python scripts/test-setup-ui.py` により再検証できます。
+この内容は [findings.md](findings.md#readme-1) にまとめています。
 
 ## 実装と依存関係
 
-本番環境は、pioarduinoのPlatformIO platform 55.03.311（Arduino core 3.3.11、ESP-IDF 5.5.5）を使うArduino ESP32です。旧Arduino core 2.0.17はWebServerの既知の修正（GHSA-8cmm-3887-r32j、GHSA-5476-9jjq-563m）が不足するため使用しません。
-
-- `bodmer/TFT_eSPI@2.5.43`
-- `bblanchon/ArduinoJson@7.4.3`
-- ネイティブテスト: `throwtheswitch/Unity@2.6.1`
-- 開発ツール: `platformio==6.1.19`、`esptool==5.4.0`
-
-PlatformIOのキャッシュは `platformio.ini` の `core_dir = .local/platformio` に分離しています。開発ツールはグローバルPythonへ入れず、プロジェクト外または専用venvで管理してください。
-
-画面とタッチ入力は [include/notification-display.h](include/notification-display.h)、表示状態は [include/display-state.h](include/display-state.h)、ネットワーク統合は [src/network.cpp](src/network.cpp)、認証通信は [src/codex-client.cpp](src/codex-client.cpp)、Web設定画面は [web/setup.html](web/setup.html) にあります。
+この内容は [findings.md](findings.md#readme-2) にまとめています。
 
 ## セキュリティと復旧
 
@@ -87,3 +62,7 @@ PlatformIOのキャッシュは `platformio.ini` の `core_dir = .local/platform
 - [貢献ガイド](CONTRIBUTING.md)
 - [セキュリティ](SECURITY.md)
 - [サポート](SUPPORT.md)
+
+## 開発時の参照先
+
+プロジェクト固有の構成・環境・調査知見は [findings.md](findings.md)、作業規範は [AGENTS.md](AGENTS.md)、検証記録は [verification.md](verification.md) を参照してください。
