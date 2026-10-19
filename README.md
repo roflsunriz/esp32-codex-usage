@@ -53,7 +53,7 @@ LCDは横向き320×240です。使用量と設定の2タブを表示し、未�
 
 ## ドキュメント
 
-依存更新の PR は `.github/dependabot.yml` で毎週作成します。Dependabot の patch／minor 更新は PR 用 CI が成功すると自動で squash merge され、失敗した CI ジョブは 1 回だけ再実行されます。major 更新と再失敗した PR は手動で確認します。自動処理の呼び出し設定は `.github/workflows/dependabot-automation.yml` にあります。
+依存更新の PR は `.github/dependabot.yml` で毎月28日00:00（Asia/Tokyo）にまとめて作成します。Dependabot の patch／minor／major 更新は PR 用 CI が成功した場合だけ、同日18:00の月末処理で squash merge されます。失敗した CI ジョブは 1 回だけ再実行し、再失敗した PR は残して手動で確認します。自動処理の呼び出し設定は `.github/workflows/dependabot-automation.yml` にあります。
 
 - [更新・復旧手順](how-to-update.md)
 - [検証手順と結果](verification.md)

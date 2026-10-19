@@ -86,6 +86,8 @@ python scripts/flash-backup.py restore `
 
 ## Dependabot PR の更新
 
+
+Dependabot version update は毎月28日00:00、検証済み PR の自動マージは同日18:00（いずれも `Asia/Tokyo`）にまとめます。28日より前に自動マージせず、現在の head SHA と全 PR チェックを月末処理で再確認します。
 `.github/dependabot.yml` の pip／GitHub Actions 更新は毎週確認されます。patch／minor PR は `.github/workflows/ci.yml` の `CI` が成功した場合に自動で squash merge されます。失敗時は failed jobs が 1 回再実行され、再失敗や major 更新は PR を残します。手動修正では `requirements-dev.txt` 等の固定値と `verification.md` の検証手順を確認してください。
 
 自動処理を変更するときは、`.github/workflows/dependabot-automation.yml` の呼び出し先 SHA と `CI` の表示名を実際のワークフローに合わせ、`actionlint` と PR の実行結果で確認します。問題があれば呼び出し先を直前の検証済み SHA に戻すコミットを push し、誤って取り込んだ依存更新は通常の revert コミットで戻します。
