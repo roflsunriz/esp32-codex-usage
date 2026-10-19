@@ -17,6 +17,10 @@
 - README は利用開始・操作、更新手順は更新と復旧、verification.md は検証手順と実測証跡、専門の設計・研究文書は詳細な根拠を担います。これらの用途は維持し、この文書から参照します。
 - 更新・検証の代替は一律のBunコマンドに固定せず、下記の採用技術と既存CIに対応する検査を使います。実行不能や未検証の条件は成功扱いせず verification.md に残します。
 
+## CIの分割境界
+
+- 生成物・Python品質検査、PlatformIO nativeテスト、ESP32 firmware生成は相互の成果物を参照しないため、同じ固定requirementsとPlatformIOキャッシュを使うfail-fast matrixで並列実行する。firmware artifactは`firmware` shardだけが公開する。
+
 <a id="agents-1"></a>
 
 ## 実装・検証で確認した事項
