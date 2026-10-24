@@ -28,7 +28,8 @@ bool ConfigStore::load(Settings& settings, Tokens& tokens) {
     const auto error = deserializeJson(document, value.get(), length);
     const bool isSettings = strcmp(key, "settings") == 0;
     const int version = document["version"].is<int>() ? document["version"].as<int>() : 0;
-    bool okay = !error && (isSettings ? (version == 1 || version == 2) : version == 1);
+    bool okay = !error &&
+                (isSettings ? (version >= 1 && version <= 3) : version == 1);
     if (okay && strcmp(key, "settings") == 0) {
       Settings next;
       next.ssid = document["ssid"].as<String>();
@@ -41,15 +42,18 @@ bool ConfigStore::load(Settings& settings, Tokens& tokens) {
               ? document["pollSec"].as<uint32_t>()
               : 300U;
       next.displayFlipped = version == 1 ? false : document["flipped"].as<bool>();
+      next.usageChangeWake =
+          version >= 3 ? document["usageWake"].as<bool>() : false;
       DisplayState state;
       okay = document["ssid"].is<const char*>() && document["password"].is<const char*>() &&
              next.ssid.length() <= 32 && next.password.length() <= 64 &&
              state.setTimeout(next.timeoutMs, 0) &&
              DisplayState::isValidPollSliderSec(next.pollIntervalSec) &&
-             (version == 1 || document["flipped"].is<bool>());
+             (version == 1 || document["flipped"].is<bool>()) &&
+             (version < 3 || document["usageWake"].is<bool>());
       if (okay) {
         settings = next;
-        if ((version == 1 || !document["pollSec"].is<uint32_t>()) &&
+        if ((version < 3 || !document["pollSec"].is<uint32_t>()) &&
             !saveSettings(next))
           valid = false;
       }
@@ -74,12 +78,13 @@ bool ConfigStore::load(Settings& settings, Tokens& tokens) {
 
 bool ConfigStore::saveSettings(const Settings& settings) {
   JsonDocument document;
-  document["version"] = 2;
+  document["version"] = 3;
   document["ssid"] = settings.ssid;
   document["password"] = settings.password;
   document["timeout"] = settings.timeoutMs;
   document["pollSec"] = settings.pollIntervalSec;
   document["flipped"] = settings.displayFlipped;
+  document["usageWake"] = settings.usageChangeWake;
   String value;
   serializeJson(document, value);
   return preferences_.putBytes("settings", value.c_str(), value.length()) == value.length();

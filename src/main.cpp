@@ -9,10 +9,14 @@
 #include "display-diff.h"
 #include "display-state.h"
 #include "reset-format.h"
+#include "settings-wheel-ui.h"
 #include "ui-canvas.h"
 #include "ui-tabs.h"
+#include "wheel-picker.h"
 
 namespace {
+
+using namespace settings_ui;
 
 CodexUsageDisplay gDisplay;
 TFT_eSprite gCanvas(&gDisplay);
@@ -40,53 +44,7 @@ constexpr uint8_t kBootPin = 0U;
 
 // Touch positions are calibrated to screen 24..295 (x) and 24..215 (y),
 // so all touch targets must live inside that field.
-constexpr uint16_t kSliderX0 = 24U;
-constexpr uint16_t kSliderX1 = 275U;
-constexpr uint16_t kSliderMinutesY = 120U;
-constexpr uint16_t kSliderHoursY = 160U;
-constexpr uint16_t kSliderPollY = 200U;
-constexpr uint16_t kSliderHalfH = 14U;
-// Settings content below the fixed title (y38). The action row at the
-// content bottom scrolls with the sliders; the scrollbar stays fixed.
-constexpr int32_t kSettingsContentH = 264;
-constexpr int32_t kSettingsVisibleTop = 38;
-constexpr int32_t kSettingsVisibleBottom = 208;
-constexpr int32_t kSettingsScrollMax =
-    kSettingsContentH - (kSettingsVisibleBottom - kSettingsVisibleTop);
-constexpr uint16_t kSettingsScrollBarX0 = 283U;
-constexpr uint16_t kSettingsScrollBarY0 = 44;
-constexpr uint16_t kSettingsScrollBarY1 = 204;
-constexpr int32_t kSettingsScrollPage = 40;
-constexpr uint16_t kSettingsActionsY = 228U;
-constexpr uint16_t kSettingsActionW = 268U;
-
-uint32_t sliderValueFromX(uint16_t x, uint32_t minV, uint32_t maxV,
-                          uint32_t step) {
-  if (maxV <= minV || step == 0U) return minV;
-  const uint32_t trackW = kSliderX1 - kSliderX0;
-  uint32_t offset = x < kSliderX0 ? 0U : x - kSliderX0;
-  if (offset > trackW) offset = trackW;
-  const uint32_t steps = (maxV - minV) / step;
-  uint32_t index = (offset * steps + trackW / 2U) / trackW;
-  if (index > steps) index = steps;
-  return minV + index * step;
-}
-
-uint16_t sliderXFromValue(uint32_t value, uint32_t minV, uint32_t maxV) {
-  if (maxV <= minV) return kSliderX0;
-  if (value < minV) value = minV;
-  if (value > maxV) value = maxV;
-  const uint32_t trackW = kSliderX1 - kSliderX0;
-  const uint32_t range = maxV - minV;
-  return static_cast<uint16_t>(kSliderX0 +
-                               (value - minV) * trackW / range);
-}
-
-int32_t clampSettingsScroll(int32_t scroll) {
-  if (scroll < 0) return 0;
-  if (scroll > kSettingsScrollMax) return kSettingsScrollMax;
-  return scroll;
-}
+// Settings content scrolls below the fixed title; the scrollbar stays fixed.
 
 struct Rect {
   uint16_t x;
@@ -97,7 +55,9 @@ struct Rect {
 
 // Content-space Y; add the scroll offset handling at each use site.
 constexpr Rect kSettingsActionRects[] = {
-    {6U, kSettingsActionsY, kSettingsActionW, 30U},
+    {6U, kUsageWakeActionY, kActionW, 30U},
+    {6U, kScreenOffActionY, kActionW, 30U},
+    {6U, kSetupActionY, kActionW, 30U},
 };
 constexpr Rect kConnectionActionRects[] = {
     {6U, 198U, 150U, 30U},
@@ -117,9 +77,9 @@ enum class DragKind : uint8_t {
   None, SleepMinutes, SleepHours, PollInterval, Scroll
 };
 DragKind gDragKind = DragKind::None;
-int32_t gDragStartX = 0;
 int32_t gDragStartY = 0;
 int32_t gDragStartScroll = 0;
+uint32_t gDragStartValue = 0U;
 String gLocalNotice;
 uint32_t gLocalNoticeUntil = 0U;
 bool gLastLocalNoticeActive = false;
@@ -326,6 +286,20 @@ bool windowChanged(const usage::Window& before, const usage::Window& after) {
          before.resetsAt != after.resetsAt;
 }
 
+bool usageAmountChanged(const usage::Snapshot& before,
+                        const usage::Snapshot& after) {
+  if (before.updatedAt == 0U || after.updatedAt == 0U ||
+      before.updatedAt == after.updatedAt) {
+    return false;
+  }
+  const bool fiveHourChanged =
+      before.fiveHour.available && after.fiveHour.available &&
+      before.fiveHour.used != after.fiveHour.used;
+  const bool weeklyChanged = before.weekly.available && after.weekly.available &&
+                             before.weekly.used != after.weekly.used;
+  return fiveHourChanged || weeklyChanged;
+}
+
 bool snapshotDisplayChanged(const usage::Snapshot& before, const usage::Snapshot& after) {
   return windowChanged(before.fiveHour, after.fiveHour) ||
          windowChanged(before.weekly, after.weekly) || before.status != after.status ||
@@ -336,7 +310,8 @@ bool snapshotDisplayChanged(const usage::Snapshot& before, const usage::Snapshot
          before.apPassword != after.apPassword || before.address != after.address ||
          before.connected != after.connected || before.authenticated != after.authenticated ||
          before.setupActive != after.setupActive || before.timeoutMs != after.timeoutMs ||
-         before.displayFlipped != after.displayFlipped;
+         before.displayFlipped != after.displayFlipped ||
+         before.usageChangeWake != after.usageChangeWake;
 }
 
 void drawButton(const Rect& rect, const String& label, bool selected = false,
@@ -432,7 +407,7 @@ void drawSettings(uint32_t now) {
   const uint32_t minutes = DisplayState::sleepMinutesPart(timeoutMs);
   const uint32_t hours = DisplayState::sleepHoursPart(timeoutMs);
   const uint32_t pollSec = gSnapshot.pollIntervalMs / 1000U;
-  const int32_t scroll = clampSettingsScroll(gSettingsScroll);
+  const int32_t scroll = clampScroll(gSettingsScroll);
   auto contentY = [scroll](int32_t y) -> int16_t {
     return static_cast<int16_t>(y - scroll);
   };
@@ -460,48 +435,54 @@ void drawSettings(uint32_t now) {
                            static_cast<uint16_t>(y - 4U), 8U, 9U, kPanel);
   };
 
-  if (timeoutMs == 0U) {
-    drawContentLine(74, String("消灯: 常にオン"));
-  } else {
-    drawContentLine(74, String("消灯: ") + String(hours) + String("時間") +
-                           String(minutes) + String("分"));
+  settings_ui::drawWheel(frameTarget(), contentY, kPickerLeftX0, kPickerLeftX1,
+                         hours, DisplayState::kSleepHoursMax, String("時間"),
+                         kText, kMuted, kBackground, kBarBackground);
+  settings_ui::drawWheel(frameTarget(), contentY, kPickerRightX0,
+                         kPickerRightX1, minutes,
+                         DisplayState::kSleepMinutesMax, String("分"), kText,
+                         kMuted, kBackground, kBarBackground);
+  const int16_t separatorY = contentY(kPickerCenterY) - 8;
+  if (separatorY >= 56 && separatorY <= 192) {
+    frameTarget().setTextColor(kAccent, kBackground);
+    frameTarget().drawString(String(":"), 149U,
+                             static_cast<uint16_t>(separatorY));
   }
-  drawContentLine(94, String("分 0-59: ") + String(minutes) + String("分"),
-                  kMuted);
-  drawContentSlider(kSliderMinutesY, minutes, 0U,
-                    DisplayState::kSleepMinutesMax);
-  drawContentLine(134, String("時間 0-24: ") + String(hours) + String("時間"),
-                  kMuted);
-  drawContentSlider(kSliderHoursY, hours, 0U, DisplayState::kSleepHoursMax);
-  drawContentLine(174, String("取得期間 60-600秒: ") + String(pollSec) +
+  drawContentLine(206, String("取得期間 60-600秒: ") + String(pollSec) +
                            String("秒"),
                   kMuted);
   drawContentSlider(kSliderPollY, pollSec,
                     DisplayState::kPollSliderMinSec,
                     DisplayState::kPollSliderMaxSec);
-  drawContentLine(210, String("0分0時間は常にオン"), kMuted);
-  for (size_t i = 0U; i < 1U; ++i) {
-    const int16_t y = contentY(kSettingsActionsY);
+  for (size_t i = 0U;
+       i < sizeof(kSettingsActionRects) / sizeof(kSettingsActionRects[0]);
+       ++i) {
+    const int16_t y = contentY(kSettingsActionRects[i].y);
     if (y < 56 || y > 178) continue;
     const Rect rect = {kSettingsActionRects[i].x, static_cast<uint16_t>(y),
                        kSettingsActionRects[i].width,
                        kSettingsActionRects[i].height};
-    drawButton(rect, String("初期設定"));
+    if (i == 0U) {
+      drawButton(rect, String("使用量変化で10分点灯"),
+                 gSnapshot.usageChangeWake);
+    } else if (i == 1U) {
+      drawButton(rect, String("今すぐ消灯"), false, kBackground, kWarning);
+    } else {
+      drawButton(rect, String("初期設定"));
+    }
   }
   // Scrollbar on the right edge.
-  const int32_t trackH = kSettingsScrollBarY1 - kSettingsScrollBarY0;
+  const int32_t trackH = kScrollBarY1 - kScrollBarY0;
   const int32_t thumbH =
-      (kSettingsVisibleBottom - kSettingsVisibleTop) * trackH /
-      kSettingsContentH;
+      (kVisibleBottom - kVisibleTop) * trackH / kContentH;
   const int32_t travel = trackH - thumbH;
-  const int32_t thumbY = travel <= 0 || kSettingsScrollMax <= 0
-                             ? kSettingsScrollBarY0
-                             : kSettingsScrollBarY0 +
-                                   scroll * travel / kSettingsScrollMax;
-  frameTarget().drawRoundRect(kSettingsScrollBarX0,
-                              static_cast<uint16_t>(kSettingsScrollBarY0),
+  const int32_t thumbY = travel <= 0 || kScrollMax <= 0
+                             ? kScrollBarY0
+                             : kScrollBarY0 + scroll * travel / kScrollMax;
+  frameTarget().drawRoundRect(kScrollBarX0,
+                              static_cast<uint16_t>(kScrollBarY0),
                               12U, static_cast<uint16_t>(trackH), 2, kMuted);
-  frameTarget().fillRect(kSettingsScrollBarX0 + 2U,
+  frameTarget().fillRect(kScrollBarX0 + 2U,
                          static_cast<uint16_t>(thumbY), 8U,
                          static_cast<uint16_t>(thumbH), kText);
 
@@ -611,33 +592,37 @@ void applySleepParts(uint32_t minutes, uint32_t hours, uint32_t now) {
 }
 
 int32_t settingsContentY(uint16_t y) {
-  return static_cast<int32_t>(y) + clampSettingsScroll(gSettingsScroll);
+  return static_cast<int32_t>(y) + clampScroll(gSettingsScroll);
 }
 
-// Settings slider tap in content coordinates. Returns true when a slider
-// handled the tap (and fixes the drag gesture mode).
-bool handleSettingsSlider(uint16_t x, int32_t contentY, uint32_t now) {
-  if (x < 16U || x > 283U) {
-    return false;
-  }
-  if (contentY >= static_cast<int32_t>(kSliderMinutesY) - 14 &&
-      contentY < static_cast<int32_t>(kSliderMinutesY) + 14) {
-    const uint32_t minutes = sliderValueFromX(
-        x, 0U, DisplayState::kSleepMinutesMax, 1U);
-    gDragKind = DragKind::SleepMinutes;
-    applySleepParts(minutes, DisplayState::sleepHoursPart(gDisplayState.timeout()),
-                    now);
+// Settings drum/slider tap in content coordinates. The two sleep values use
+// vertical iOS-style drums; the polling cadence remains a horizontal slider.
+bool handleSettingsControl(uint16_t x, int32_t contentY, uint32_t now) {
+  if (contentY >= kPickerTopY && contentY < kPickerBottomY &&
+      ((x >= kPickerLeftX0 && x < kPickerLeftX1) ||
+       (x >= kPickerRightX0 && x < kPickerRightX1))) {
+    const bool hoursWheel = x < kPickerLeftX1;
+    const uint32_t current =
+        hoursWheel ? DisplayState::sleepHoursPart(gDisplayState.timeout())
+                   : DisplayState::sleepMinutesPart(gDisplayState.timeout());
+    const uint32_t maximum = hoursWheel ? DisplayState::kSleepHoursMax
+                                        : DisplayState::kSleepMinutesMax;
+    const uint32_t selected = wheel_picker::valueForTap(
+        current, contentY, kPickerCenterY, maximum);
+    gDragKind = hoursWheel ? DragKind::SleepHours : DragKind::SleepMinutes;
+    gDragStartValue = selected;
+    if (selected != current) {
+      applySleepParts(hoursWheel
+                          ? DisplayState::sleepMinutesPart(gDisplayState.timeout())
+                          : selected,
+                      hoursWheel ? selected
+                                 : DisplayState::sleepHoursPart(
+                                       gDisplayState.timeout()),
+                      now);
+    }
     return true;
   }
-  if (contentY >= static_cast<int32_t>(kSliderHoursY) - 14 &&
-      contentY < static_cast<int32_t>(kSliderHoursY) + 14) {
-    const uint32_t hours = sliderValueFromX(
-        x, 0U, DisplayState::kSleepHoursMax, 1U);
-    gDragKind = DragKind::SleepHours;
-    applySleepParts(DisplayState::sleepMinutesPart(gDisplayState.timeout()), hours,
-                    now);
-    return true;
-  }
+  if (x < 16U || x > 283U) return false;
   if (contentY >= static_cast<int32_t>(kSliderPollY) - 14 &&
       contentY < static_cast<int32_t>(kSliderPollY) + 14) {
     const uint32_t pollSec = sliderValueFromX(
@@ -652,40 +637,42 @@ bool handleSettingsSlider(uint16_t x, int32_t contentY, uint32_t now) {
 
 bool handleSettingsScrollBar(uint16_t x, uint16_t y) {
   // Scrollbar wins over the slider end zone.
-  if (x < 281U || y < kSettingsScrollBarY0 || y >= kSettingsScrollBarY1) {
+  if (x < 281U || y < kScrollBarY0 || y >= kScrollBarY1) {
     return false;
   }
-  const int32_t trackH = kSettingsScrollBarY1 - kSettingsScrollBarY0;
+  const int32_t trackH = kScrollBarY1 - kScrollBarY0;
   const int32_t thumbH =
-      (kSettingsVisibleBottom - kSettingsVisibleTop) * trackH /
-      kSettingsContentH;
+      (kVisibleBottom - kVisibleTop) * trackH / kContentH;
   const int32_t travel = trackH - thumbH;
-  const int32_t thumbY = travel <= 0 || kSettingsScrollMax <= 0
-                             ? kSettingsScrollBarY0
-                             : kSettingsScrollBarY0 +
-                                   clampSettingsScroll(gSettingsScroll) *
-                                       travel / kSettingsScrollMax;
-  int32_t target = clampSettingsScroll(gSettingsScroll);
+  const int32_t thumbY =
+      travel <= 0 || kScrollMax <= 0
+          ? kScrollBarY0
+          : kScrollBarY0 + clampScroll(gSettingsScroll) * travel / kScrollMax;
+  int32_t target = clampScroll(gSettingsScroll);
   if (static_cast<int32_t>(y) < thumbY) {
-    target -= kSettingsScrollPage;
+    target -= kScrollPage;
   } else if (static_cast<int32_t>(y) >= thumbY + thumbH) {
-    target += kSettingsScrollPage;
+    target += kScrollPage;
   } else {
     gDragKind = DragKind::Scroll;
     return true;
   }
-  gSettingsScroll = clampSettingsScroll(target);
+  gSettingsScroll = clampScroll(target);
   gDragKind = DragKind::Scroll;
   gDirty = true;
   return true;
 }
 
 int settingsActionAt(uint16_t x, int32_t contentY) {
-  if (contentY < kSettingsActionsY ||
-      contentY >= static_cast<int32_t>(kSettingsActionsY) + 30) {
-    return -1;
+  for (size_t i = 0U;
+       i < sizeof(kSettingsActionRects) / sizeof(kSettingsActionRects[0]);
+       ++i) {
+    const Rect& rect = kSettingsActionRects[i];
+    if (x >= rect.x && x < rect.x + rect.width && contentY >= rect.y &&
+        contentY < static_cast<int32_t>(rect.y + rect.height)) {
+      return static_cast<int>(i);
+    }
   }
-  if (x >= 6U && x < 6U + kSettingsActionW) return 0;
   return -1;
 }
 
@@ -706,18 +693,22 @@ void handleAction(uint16_t x, uint16_t y, uint32_t now) {
   if (gTab == Tab::Settings) {
     const int32_t contentY = settingsContentY(y);
     gDragKind = DragKind::None;
-    gDragStartX = x;
     gDragStartY = y;
-    gDragStartScroll = clampSettingsScroll(gSettingsScroll);
-    if (handleSettingsSlider(x, contentY, now)) {
-      return;
-    }
+    gDragStartScroll = clampScroll(gSettingsScroll);
     if (handleSettingsScrollBar(x, y)) {
       return;
     }
+    if (handleSettingsControl(x, contentY, now)) return;
     gDragKind = DragKind::Scroll;
     const int actionIndex = settingsActionAt(x, contentY);
     if (actionIndex == 0) {
+      sendCommand(usage::CommandType::UsageChangeWake,
+                  gSnapshot.usageChangeWake ? 0U : 1U);
+      setLocalNotice(String("点灯モードを保存中"), now);
+    } else if (actionIndex == 1) {
+      gDragKind = DragKind::None;
+      gDisplayState.sleepNow();
+    } else if (actionIndex == 2) {
       sendCommand(usage::CommandType::Setup);
     }
     return;
@@ -739,16 +730,14 @@ void handleDragMove(uint16_t x, uint16_t y, uint32_t now) {
     return;
   }
   if (gDragKind == DragKind::SleepMinutes ||
-      gDragKind == DragKind::SleepHours ||
-      gDragKind == DragKind::PollInterval) {
-    // Keep adjusting the same slider while the contact continues, even if
-    // the finger drifts off its row.
-    if (x < 16U || x > 283U) {
-      return;
-    }
+      gDragKind == DragKind::SleepHours) {
+    const uint32_t maximum = gDragKind == DragKind::SleepMinutes
+                                 ? DisplayState::kSleepMinutesMax
+                                 : DisplayState::kSleepHoursMax;
+    const uint32_t selected = wheel_picker::valueForDrag(
+        gDragStartValue, gDragStartY, y, maximum);
     if (gDragKind == DragKind::SleepMinutes) {
-      const uint32_t minutes = sliderValueFromX(
-          x, 0U, DisplayState::kSleepMinutesMax, 1U);
+      const uint32_t minutes = selected;
       if (minutes !=
           DisplayState::sleepMinutesPart(gDisplayState.timeout())) {
         applySleepParts(minutes,
@@ -756,19 +745,21 @@ void handleDragMove(uint16_t x, uint16_t y, uint32_t now) {
                         now);
       }
     } else if (gDragKind == DragKind::SleepHours) {
-      const uint32_t hours = sliderValueFromX(
-          x, 0U, DisplayState::kSleepHoursMax, 1U);
+      const uint32_t hours = selected;
       if (hours != DisplayState::sleepHoursPart(gDisplayState.timeout())) {
         applySleepParts(DisplayState::sleepMinutesPart(gDisplayState.timeout()),
                         hours, now);
       }
-    } else {
-      const uint32_t pollSec = sliderValueFromX(
-          x, DisplayState::kPollSliderMinSec, DisplayState::kPollSliderMaxSec,
-          DisplayState::kPollSliderStepSec);
-      if (pollSec != gSnapshot.pollIntervalMs / 1000U) {
-        applyPollInterval(pollSec, now);
-      }
+    }
+    return;
+  }
+  if (gDragKind == DragKind::PollInterval) {
+    if (x < 16U || x > 283U) return;
+    const uint32_t pollSec = sliderValueFromX(
+        x, DisplayState::kPollSliderMinSec, DisplayState::kPollSliderMaxSec,
+        DisplayState::kPollSliderStepSec);
+    if (pollSec != gSnapshot.pollIntervalMs / 1000U) {
+      applyPollInterval(pollSec, now);
     }
     return;
   }
@@ -777,8 +768,8 @@ void handleDragMove(uint16_t x, uint16_t y, uint32_t now) {
     if (delta < 6 && delta > -6) {
       return;
     }
-    const int32_t target = clampSettingsScroll(gDragStartScroll + delta);
-    if (target != clampSettingsScroll(gSettingsScroll)) {
+    const int32_t target = clampScroll(gDragStartScroll + delta);
+    if (target != clampScroll(gSettingsScroll)) {
       gSettingsScroll = target;
       gDirty = true;
     }
@@ -808,7 +799,16 @@ void updateSnapshot(uint32_t now) {
   }
   const bool stale = snapshotIsStale(next, now);
   const bool changed = snapshotDisplayChanged(gSnapshot, next) || stale != gLastStale;
+  const bool amountChanged = usageAmountChanged(gSnapshot, next);
   gLastStale = stale;
+  bool wakeModeChanged = false;
+  if (next.usageChangeWake != gDisplayState.usageChangeMode()) {
+    gDisplayState.setUsageChangeMode(next.usageChangeWake, now);
+    wakeModeChanged = true;
+  }
+  if (amountChanged && next.usageChangeWake) {
+    gDisplayState.notifyUsageChanged(now);
+  }
   gSnapshot = next;
   // The Connection tab only shows while unauthenticated or while a device
   // code is pending. Return to Usage when authentication completes while
@@ -837,7 +837,8 @@ void updateSnapshot(uint32_t now) {
       timeoutChanged = true;
     }
   }
-  if ((changed || timeoutChanged || orientationChanged || tabHidden) &&
+  if ((changed || timeoutChanged || orientationChanged || tabHidden ||
+       wakeModeChanged || amountChanged) &&
       gDisplayState.awake()) {
     gDirty = true;
   }

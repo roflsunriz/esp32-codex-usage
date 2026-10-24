@@ -9,6 +9,7 @@ struct Settings {
   uint32_t timeoutMs = 60000;
   uint32_t pollIntervalSec = 300;
   bool displayFlipped = false;
+  bool usageChangeWake = false;
 };
 struct Tokens {
   String access;

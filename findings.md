@@ -12,3 +12,4 @@
 - 通常配布は `cyd` のみ。USB診断機能を持つ `cyd-diagnostics` は配布せず、診断後に元flashへ戻す。PlatformIOはrepo内 `.local/platformio` と `PYTHONUTF8=1` を使う。
 - Arduino 2.0.17系はWebServer修正不足のため再導入しない。依存versionはREADMEの過去記録でなく現在の `requirements-dev.txt` と `platformio.ini` を正本にする。
 - LinuxのChrome UI testはprocess groupを終了してから一時profileを期限付き削除する。Windows専用GPU optionをLinuxへ渡すとSIGTRAPになるためOS分岐を維持する。
+- 自動消灯の時・分は横スライダーではなく2列の縦ドラムで扱う。使用量変化点灯は初回取得を変化に含めず、既存値同士の使用率が変わった時だけ10分タイマーを開始する。即時消灯は保存済み時間を変更せず、押下のreleaseと次の復帰タッチを操作へ流さない。

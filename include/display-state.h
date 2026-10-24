@@ -17,6 +17,7 @@ class DisplayState {
   static constexpr uint32_t kPollSliderMinSec = 60U;
   static constexpr uint32_t kPollSliderMaxSec = 600U;
   static constexpr uint32_t kPollSliderStepSec = 60U;
+  static constexpr uint32_t kUsageChangeWakeMs = 600000U;
 
   static uint32_t sleepMinutesPart(uint32_t timeoutMs) {
     return (timeoutMs % 3600000U) / 60000U;
@@ -42,13 +43,16 @@ class DisplayState {
         last_activity_ms_(now),
         awake_(true),
         pressed_(false),
-        wake_gesture_(false) {}
+        wake_gesture_(false),
+        usage_change_mode_(false) {}
 
   // now は millis() などの uint32_t タイマー値を渡す。差分計算は
   // unsigned のラップアラウンドを利用するため、タイマー巻き戻り後も動作する。
   void tick(uint32_t now) {
-    if (!awake_ || timeout_ms_ == 0U ||
-        static_cast<uint32_t>(now - last_activity_ms_) < timeout_ms_) {
+    const uint32_t effective_timeout =
+        usage_change_mode_ ? kUsageChangeWakeMs : timeout_ms_;
+    if (!awake_ || effective_timeout == 0U ||
+        static_cast<uint32_t>(now - last_activity_ms_) < effective_timeout) {
       return;
     }
 
@@ -96,6 +100,26 @@ class DisplayState {
     wake_gesture_ = pressed_;
   }
 
+  // 保存済みの消灯時間は変えず、現在の画面だけを直ちに消灯する。
+  // 消灯ボタンを押した接触はreleaseまで起床操作にもUI操作にも使わない。
+  void sleepNow() {
+    awake_ = false;
+    wake_gesture_ = pressed_;
+  }
+
+  void setUsageChangeMode(bool enabled, uint32_t now) {
+    if (usage_change_mode_ == enabled) return;
+    usage_change_mode_ = enabled;
+    last_activity_ms_ = now;
+  }
+
+  bool usageChangeMode() const { return usage_change_mode_; }
+
+  void notifyUsageChanged(uint32_t now) {
+    if (!usage_change_mode_) return;
+    wake(now);
+  }
+
   // 許可された選択肢だけを受け付け、成功時は変更時刻からカウントし直す。
   bool setTimeout(uint32_t timeout_ms, uint32_t now) {
     if (!isValidTimeout(timeout_ms)) {
@@ -123,6 +147,7 @@ class DisplayState {
   bool awake_;
   bool pressed_;
   bool wake_gesture_;
+  bool usage_change_mode_;
 };
 
 #endif  // CODEX_USAGE_DISPLAY_STATE_H

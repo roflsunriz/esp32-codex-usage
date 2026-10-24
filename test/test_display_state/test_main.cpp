@@ -3,6 +3,7 @@
 #include <unity.h>
 
 #include "display-state.h"
+#include "wheel-picker.h"
 
 namespace {
 
@@ -168,6 +169,52 @@ void test_wake_is_wrap_safe_and_consumes_held_touch() {
   TEST_ASSERT_TRUE(state.touch(true, static_cast<uint32_t>(base + 15003U)));
 }
 
+void test_manual_sleep_preserves_timeout_and_consumes_button_gesture() {
+  DisplayState state(0U);
+  TEST_ASSERT_TRUE(state.setTimeout(300000U, 0U));
+  TEST_ASSERT_TRUE(state.touch(true, 10U));
+  state.sleepNow();
+  TEST_ASSERT_FALSE(state.awake());
+  TEST_ASSERT_EQUAL_UINT32(300000U, state.timeout());
+  TEST_ASSERT_FALSE(state.touch(false, 11U));
+  TEST_ASSERT_FALSE(state.touch(true, 12U));
+  TEST_ASSERT_TRUE(state.awake());
+  TEST_ASSERT_FALSE(state.touch(false, 13U));
+  TEST_ASSERT_TRUE(state.touch(true, 14U));
+}
+
+void test_usage_change_mode_wakes_for_ten_minutes() {
+  DisplayState state(0U);
+  TEST_ASSERT_TRUE(state.setTimeout(0U, 0U));
+  state.setUsageChangeMode(true, 100U);
+  state.tick(600099U);
+  TEST_ASSERT_TRUE(state.awake());
+  state.tick(600100U);
+  TEST_ASSERT_FALSE(state.awake());
+  state.notifyUsageChanged(700000U);
+  TEST_ASSERT_TRUE(state.awake());
+  state.tick(1299999U);
+  TEST_ASSERT_TRUE(state.awake());
+  state.tick(1300000U);
+  TEST_ASSERT_FALSE(state.awake());
+  TEST_ASSERT_EQUAL_UINT32(0U, state.timeout());
+}
+
+void test_wheel_picker_taps_and_drags_by_rows() {
+  TEST_ASSERT_EQUAL_UINT32(10U,
+                           wheel_picker::valueForTap(10U, 100, 100, 59U));
+  TEST_ASSERT_EQUAL_UINT32(12U,
+                           wheel_picker::valueForTap(10U, 144, 100, 59U));
+  TEST_ASSERT_EQUAL_UINT32(8U,
+                           wheel_picker::valueForTap(10U, 56, 100, 59U));
+  TEST_ASSERT_EQUAL_UINT32(12U,
+                           wheel_picker::valueForDrag(10U, 100, 56, 59U));
+  TEST_ASSERT_EQUAL_UINT32(0U,
+                           wheel_picker::valueForDrag(1U, 100, 200, 59U));
+  TEST_ASSERT_EQUAL_UINT32(24U,
+                           wheel_picker::valueForDrag(23U, 100, 50, 24U));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_default_timeout_and_legacy_options_are_accepted);
@@ -181,5 +228,8 @@ int main() {
   RUN_TEST(test_touch_at_deadline_wakes_instead_of_activating);
   RUN_TEST(test_wake_restarts_timer_after_auto_off);
   RUN_TEST(test_wake_is_wrap_safe_and_consumes_held_touch);
+  RUN_TEST(test_manual_sleep_preserves_timeout_and_consumes_button_gesture);
+  RUN_TEST(test_usage_change_mode_wakes_for_ten_minutes);
+  RUN_TEST(test_wheel_picker_taps_and_drags_by_rows);
   return UNITY_END();
 }

@@ -22,6 +22,7 @@ struct Snapshot {
   uint32_t nextPollMs = 0;
   bool fetching = false;
   bool displayFlipped = false;
+  bool usageChangeWake = false;
   uint16_t wifiDisconnectReason = 0;
 #ifdef USAGE_DIAGNOSTICS
   uint32_t tokenRefreshes = 0;
@@ -29,7 +30,7 @@ struct Snapshot {
 #endif
 };
 enum class CommandType {
-  Refresh, Login, Setup, Timeout, FlipDisplay, PollInterval,
+  Refresh, Login, Setup, Timeout, FlipDisplay, PollInterval, UsageChangeWake,
 #ifdef USAGE_DIAGNOSTICS
   RefreshToken,
 #endif

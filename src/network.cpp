@@ -46,6 +46,7 @@ void publish(uint32_t now) {
   current.pollIntervalMs = settings.pollIntervalSec * 1000U;
   current.nextPollMs = requestRefresh ? now : lastAttempt + retryDelay;
   current.displayFlipped = settings.displayFlipped;
+  current.usageChangeWake = settings.usageChangeWake;
   current.wifiDisconnectReason = disconnectReason.load();
 #ifdef USAGE_DIAGNOSTICS
   current.tokenExpiresAt = tokens.expiresAt;
@@ -125,6 +126,7 @@ void configureServer() {
     document["timeoutMs"] = settings.timeoutMs;
     document["pollIntervalSec"] = settings.pollIntervalSec;
     document["displayFlipped"] = settings.displayFlipped;
+    document["usageChangeWake"] = settings.usageChangeWake;
     String body;
     serializeJson(document, body);
     server.sendHeader("Cache-Control", "no-store");
@@ -313,6 +315,15 @@ void processCommand(const Command& command) {
         retryDelay = settings.pollIntervalSec * 1000U;
       } else
         current.status = "取得間隔を保存できません";
+      break;
+    }
+    case CommandType::UsageChangeWake: {
+      Settings next = settings;
+      next.usageChangeWake = command.value != 0U;
+      if (storageReady && store.saveSettings(next))
+        settings = next;
+      else
+        current.status = "点灯モードを保存できません";
       break;
     }
     case CommandType::FlipDisplay: {
